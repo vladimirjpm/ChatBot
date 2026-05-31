@@ -83,6 +83,29 @@
   </div>
 
   <div class="card" style="margin-bottom:1.5rem">
+    <h2 style="margin-bottom:0.75rem">Production deployment</h2>
+    <div style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1rem; font-size:0.88rem">
+      <div><span style="color:#94a3b8">Backend (Railway):</span>
+        <a href="https://chatbot-production-c911.up.railway.app" target="_blank"
+           style="color:#38bdf8; text-decoration:none">https://chatbot-production-c911.up.railway.app</a>
+      </div>
+      <div><span style="color:#94a3b8">Frontend (Vercel):</span>
+        <a href="https://chat-bot-mu-lake.vercel.app/" target="_blank"
+           style="color:#38bdf8; text-decoration:none">https://chat-bot-mu-lake.vercel.app/</a>
+      </div>
+    </div>
+    <div class="cmd-block">
+      <div class="cmd-comment"># Sanity-check — Kestrel жив (ожидается 404 от корня)</div>
+      <div class="cmd-text">curl.exe -i "https://chatbot-production-c911.up.railway.app/"</div>
+      <div style="margin-top:0.6rem" class="cmd-comment"># Чат SSE-стрим — должны политься data: "..." токены и в конце data: [DONE]</div>
+      <div class="cmd-text">$body = '{"message":"hello","history":[]}'</div>
+      <div class="cmd-text">Invoke-WebRequest -Uri "https://chatbot-production-c911.up.railway.app/api/chat/stream" `</div>
+      <div class="cmd-text">&nbsp;&nbsp;-Method POST -ContentType "application/json" -Body $body |</div>
+      <div class="cmd-text">&nbsp;&nbsp;Select -ExpandProperty Content</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.5rem">
     <h2 style="margin-bottom:0.75rem">Статус компонентов</h2>
     <div class="status-row">
       <span class="chip ok"><span class="dot"></span>dotnet build — 0 ошибок</span>
