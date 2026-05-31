@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://REPLACE_WITH_RAILWAY_URL.up.railway.app/api/:path*"
+      "destination": "https://chatbot-production-c911.up.railway.app/api/:path*"
     }
   ]
 }

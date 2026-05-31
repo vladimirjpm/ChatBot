@@ -27,9 +27,14 @@ if (llmConfig["Provider"] == "Ollama")
 }
 else
 {
+    // Проверка через IsNullOrWhiteSpace — пустая строка из appsettings не должна считаться валидным ключом
+    var apiKey = llmConfig["ApiKey"];
+    if (string.IsNullOrWhiteSpace(apiKey))
+        throw new InvalidOperationException("Llm:ApiKey не задан (ожидается env var Llm__ApiKey)");
+
     kernelBuilder.AddOpenAIChatCompletion(
         modelId: llmConfig["ModelId"] ?? "gpt-4o-mini",
-        apiKey: llmConfig["ApiKey"] ?? throw new InvalidOperationException("Llm:ApiKey не задан"));
+        apiKey: apiKey);
 }
 
 var kernel = kernelBuilder.Build();
