@@ -6,6 +6,23 @@ using Microsoft.SemanticKernel.ChatCompletion;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Диагностика — какие env vars пришли в контейнер (печатаем только имена + маску, без значений)
+// .NET: эквивалент Environment.GetEnvironmentVariables()
+Console.WriteLine("=== ENV VARS DIAGNOSTIC ===");
+foreach (System.Collections.DictionaryEntry e in Environment.GetEnvironmentVariables())
+{
+    var name = e.Key?.ToString() ?? "";
+    if (name.StartsWith("Llm", StringComparison.OrdinalIgnoreCase) ||
+        name.StartsWith("OPENAI", StringComparison.OrdinalIgnoreCase) ||
+        name.StartsWith("RAILWAY", StringComparison.OrdinalIgnoreCase))
+    {
+        var val = e.Value?.ToString() ?? "";
+        var masked = val.Length > 8 ? val[..4] + "***" + val[^4..] : "***";
+        Console.WriteLine($"  {name} = {masked} (len={val.Length})");
+    }
+}
+Console.WriteLine("=== END DIAGNOSTIC ===");
+
 // .NET: builder.Services.AddOpenApi()
 builder.Services.AddOpenApi();
 
