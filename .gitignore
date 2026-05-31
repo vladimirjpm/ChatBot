@@ -1,0 +1,23 @@
+# .NET артефакты сборки
+bin/
+obj/
+
+# Секреты и локальный конфиг
+appsettings.Development.json
+appsettings.*.json
+!appsettings.json
+
+# Frontend зависимости и локальный конфиг
+node_modules/
+chatbot-ui/dist/
+chatbot-ui/.env.local
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db

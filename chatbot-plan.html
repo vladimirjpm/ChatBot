@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChatBot — план разработки</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 2rem; }
+    h1 { font-size: 1.75rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.25rem; }
+    .subtitle { color: #94a3b8; margin-bottom: 2rem; font-size: 0.95rem; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.25rem 1.5rem; }
+    .card h2 { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 1rem; }
+
+    .stack-row { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid #1e293b; font-size: 0.88rem; }
+    .stack-row:last-child { border-bottom: none; }
+    .stack-label { color: #94a3b8; }
+    .stack-value { color: #e2e8f0; font-weight: 500; }
+
+    .cmd-block { background: #0f172a; border: 1px solid #1e3a5f; border-radius: 8px; padding: 1rem; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.82rem; line-height: 1.8; }
+    .cmd-comment { color: #475569; }
+    .cmd-text { color: #38bdf8; }
+
+    .stages { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem; }
+    .stage { display: flex; align-items: flex-start; gap: 1rem; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 1rem 1.25rem; }
+    .stage.done { border-color: #166534; background: #052e16; }
+    .stage.active { border-color: #1e40af; background: #0c1a3a; }
+
+    .stage-badge { min-width: 2rem; height: 2rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
+    .done .stage-badge { background: #16a34a; color: #fff; }
+    .active .stage-badge { background: #3b82f6; color: #fff; }
+    .stage .stage-badge { background: #334155; color: #94a3b8; }
+
+    .stage-info h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.2rem; }
+    .done .stage-info h3 { color: #4ade80; }
+    .active .stage-info h3 { color: #93c5fd; }
+    .stage .stage-info h3 { color: #94a3b8; }
+    .stage-info p { font-size: 0.82rem; color: #64748b; }
+
+    .status-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 500; }
+    .chip.ok { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+    .chip.warn { background: #1c1008; color: #fb923c; border: 1px solid #7c2d12; }
+    .chip.info { background: #0c1a3a; color: #93c5fd; border: 1px solid #1e40af; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  </style>
+</head>
+<body>
+
+  <h1>ChatBot — план разработки</h1>
+  <p class="subtitle">.NET 10 · Semantic Kernel · Qdrant · React 18 + Vite</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Стек</h2>
+      <div class="stack-row"><span class="stack-label">Backend</span><span class="stack-value">.NET 10 Minimal API</span></div>
+      <div class="stack-row"><span class="stack-label">LLM</span><span class="stack-value">Semantic Kernel 1.77 · OpenAI / Ollama</span></div>
+      <div class="stack-row"><span class="stack-label">Vector DB</span><span class="stack-value">Qdrant (Docker)</span></div>
+      <div class="stack-row"><span class="stack-label">БД / Кэш</span><span class="stack-value">PostgreSQL 16 · Redis 7</span></div>
+      <div class="stack-row"><span class="stack-label">Frontend</span><span class="stack-value">React 18 · TypeScript · Vite · Tailwind</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Что запущено прямо сейчас</h2>
+      <div class="cmd-block">
+        <div class="cmd-comment"># Инфраструктура (опционально, нужна на этапе 4)</div>
+        <div class="cmd-text">docker compose up -d</div>
+        <div style="margin-top:0.6rem" class="cmd-comment"># Frontend — первый раз (установка зависимостей)</div>
+        <div class="cmd-text">cmd /c "cd C:\_Proj\ChatBot\chatbot-ui &amp;&amp; npm install"</div>
+        <div style="margin-top:0.3rem" class="cmd-comment"># Frontend — запуск</div>
+        <div class="cmd-text">cmd /c "cd C:\_Proj\ChatBot\chatbot-ui &amp;&amp; npm run dev"</div>
+        <div style="color:#475569; font-size:0.78rem">→ http://localhost:5173</div>
+        <div style="margin-top:0.6rem" class="cmd-comment"># Backend API</div>
+        <div class="cmd-text">cd C:\_Proj\ChatBot\ChatBot.Api</div>
+        <div class="cmd-text">dotnet run</div>
+        <div style="color:#475569; font-size:0.78rem">→ http://localhost:5249/openapi/v1.json</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.5rem">
+    <h2 style="margin-bottom:0.75rem">Статус компонентов</h2>
+    <div class="status-row">
+      <span class="chip ok"><span class="dot"></span>dotnet build — 0 ошибок</span>
+      <span class="chip ok"><span class="dot"></span>POST /api/chat/stream — работает с API ключом</span>
+      <span class="chip ok"><span class="dot"></span>POST /api/documents/upload — принимает файл</span>
+      <span class="chip warn"><span class="dot"></span>RagService — заглушка (этап 4–5)</span>
+      <span class="chip warn"><span class="dot"></span>IngestionService — заглушка (этап 4)</span>
+      <span class="chip info"><span class="dot"></span>UI — стандартный Vite экран (этап 2)</span>
+    </div>
+  </div>
+
+  <div class="stages">
+    <div class="stage done">
+      <div class="stage-badge">✓</div>
+      <div class="stage-info">
+        <h3>Этап 1 — Скаффолдинг</h3>
+        <p>Solution, 3 проекта, NuGet пакеты, интерфейсы, docker-compose, .gitignore</p>
+      </div>
+    </div>
+    <div class="stage done">
+      <div class="stage-badge">✓</div>
+      <div class="stage-info">
+        <h3>Этап 2 — React UI симулятора собеседований</h3>
+        <p>Tailwind, выбор роли (.NET/React/DevOps), SSE-стриминг, резюме-контекст, gpt-4o, 🇷🇺/🇬🇧 язык интервью</p>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-badge">3</div>
+      <div class="stage-info">
+        <h3>Этап 3 — Интеграционные тесты</h3>
+        <p>xUnit, WebApplicationFactory, тесты эндпоинтов</p>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-badge">4</div>
+      <div class="stage-info">
+        <h3>Этап 4 — Ingestion Pipeline</h3>
+        <p>PdfPig парсинг → чанки → эмбеддинги → сохранение в Qdrant</p>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-badge">5</div>
+      <div class="stage-info">
+        <h3>Этап 5 — RAG в чате</h3>
+        <p>Поиск по Qdrant, инжекция контекста в промпт, оценка качества</p>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

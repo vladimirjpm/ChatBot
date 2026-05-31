@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Плавная анимация появления токенов при стриминге */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.token-fade { animation: fadeIn 0.1s ease-in; }
+
+/* Стили markdown в сообщениях */
+.prose-chat p  { margin: 0.4em 0; }
+.prose-chat ul { padding-left: 1.25em; list-style: disc; }
+.prose-chat ol { padding-left: 1.25em; list-style: decimal; }
+.prose-chat code {
+  background: #1e293b;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.85em;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+.prose-chat pre {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+.prose-chat pre code { background: transparent; padding: 0; }
+.prose-chat strong { color: #f1f5f9; }
