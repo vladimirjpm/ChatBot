@@ -1,0 +1,11 @@
+# Конфигурация Railway-деплоя.
+# .NET: аналог azure.yaml / Aspire AppHost манифеста для облачного хостинга.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Перезапуск при падении — стандартная политика для веб-сервиса
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

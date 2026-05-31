@@ -1,0 +1,14 @@
+# Исключаем артефакты сборки и локальные файлы из Docker-контекста
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+chatbot-ui/
+.vs/
+.idea/
+.git/
+.gitignore
+**/*.user
+**/appsettings.Development.json
+README.md
+chatbot-plan.html
