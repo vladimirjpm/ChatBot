@@ -1,4 +1,5 @@
 import { useState, useRef, type KeyboardEvent, type ChangeEvent } from 'react'
+import { useDocumentUpload } from '../hooks/useDocumentUpload'
 
 interface Props {
   onSend: (text: string) => void
@@ -7,17 +8,9 @@ interface Props {
   placeholder?: string
 }
 
-const API_BASE = import.meta.env.VITE_API_URL ?? ''
-
-type UploadStatus =
-  | { kind: 'idle' }
-  | { kind: 'uploading'; fileName: string }
-  | { kind: 'success'; fileName: string; chunks: number }
-  | { kind: 'error'; message: string }
-
 export function MessageInput({ onSend, disabled, onReset, placeholder }: Props) {
   const [text, setText] = useState('')
-  const [upload, setUpload] = useState<UploadStatus>({ kind: 'idle' })
+  const { status: upload, upload: uploadFile } = useDocumentUpload()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -25,21 +18,7 @@ export function MessageInput({ onSend, disabled, onReset, placeholder }: Props) 
     const file = e.target.files?.[0]
     e.target.value = '' // позволяем повторно выбрать тот же файл
     if (!file) return
-
-    setUpload({ kind: 'uploading', fileName: file.name })
-    try {
-      const form = new FormData()
-      form.append('file', file)
-      const res = await fetch(`${API_BASE}/api/documents/upload`, { method: 'POST', body: form })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data: { chunksIndexed: number; documentName: string } = await res.json()
-      setUpload({ kind: 'success', fileName: data.documentName, chunks: data.chunksIndexed })
-      // Автоскрытие статуса через 5 секунд
-      setTimeout(() => setUpload(s => s.kind === 'success' ? { kind: 'idle' } : s), 5000)
-    } catch (err) {
-      setUpload({ kind: 'error', message: err instanceof Error ? err.message : 'Ошибка загрузки' })
-      setTimeout(() => setUpload(s => s.kind === 'error' ? { kind: 'idle' } : s), 5000)
-    }
+    try { await uploadFile(file) } catch { /* статус ошибки уже выставлен хуком */ }
   }
 
   const handleSend = () => {

@@ -67,17 +67,28 @@
     <div class="card">
       <h2>Что запущено прямо сейчас</h2>
       <div class="cmd-block">
-        <div class="cmd-comment"># Инфраструктура (опционально, нужна на этапе 4)</div>
-        <div class="cmd-text">docker compose up -d</div>
+        <div class="cmd-comment"># Qdrant — нужен для upload документов и RAG-поиска (этапы 4–5)</div>
+        <div class="cmd-comment"># Требует запущенный Docker Desktop</div>
+        <div class="cmd-text">docker compose up -d qdrant</div>
+        <div style="color:#475569; font-size:0.78rem">→ REST http://localhost:6333 · gRPC :6334</div>
+        <div style="margin-top:0.3rem" class="cmd-comment"># Проверка</div>
+        <div class="cmd-text">docker ps</div>
+        <div class="cmd-text">curl.exe http://localhost:6333/collections/documents</div>
+        <div style="margin-top:0.3rem" class="cmd-comment"># Стоп / снос (volume chatbot_qdrant_data сохраняется при stop/down, удаляется при down -v)</div>
+        <div class="cmd-text">docker compose stop qdrant</div>
+        <div class="cmd-text">docker compose down -v</div>
+
         <div style="margin-top:0.6rem" class="cmd-comment"># Frontend — первый раз (установка зависимостей)</div>
         <div class="cmd-text">cmd /c "cd C:\_Proj\ChatBot\chatbot-ui &amp;&amp; npm install"</div>
         <div style="margin-top:0.3rem" class="cmd-comment"># Frontend — запуск</div>
         <div class="cmd-text">cmd /c "cd C:\_Proj\ChatBot\chatbot-ui &amp;&amp; npm run dev"</div>
         <div style="color:#475569; font-size:0.78rem">→ http://localhost:5173</div>
-        <div style="margin-top:0.6rem" class="cmd-comment"># Backend API</div>
+        <div style="margin-top:0.6rem" class="cmd-comment"># Backend API (нужен $env:Llm__ApiKey = "sk-...")</div>
         <div class="cmd-text">cd C:\_Proj\ChatBot\ChatBot.Api</div>
         <div class="cmd-text">dotnet run</div>
-        <div style="color:#475569; font-size:0.78rem">→ http://localhost:5249/openapi/v1.json</div>
+        <div style="color:#475569; font-size:0.78rem">→ http://localhost:5249/openapi/v1.json · /health · /health/live</div>
+        <div style="margin-top:0.6rem" class="cmd-comment"># Тесты</div>
+        <div class="cmd-text">dotnet test</div>
       </div>
     </div>
   </div>

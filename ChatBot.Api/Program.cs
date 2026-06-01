@@ -62,10 +62,15 @@ if (llmConfig["Provider"] != "Ollama")
 // Qdrant gRPC-клиент. Соединение ленивое — устанавливается при первом вызове,
 // поэтому отсутствие Qdrant не валит старт API (важно для тестов и health-чеков).
 // .NET: AddSingleton, потому что QdrantClient thread-safe и хранит gRPC-канал.
+//
+// Для Qdrant Cloud — нужны UseTls=true (HTTPS на 6334) и ApiKey.
+// Локально через docker compose — оба пусты, ходим plaintext на localhost:6334.
 var qdrantConfig = builder.Configuration.GetSection("Qdrant");
 builder.Services.AddSingleton(new QdrantClient(
     host: qdrantConfig["Host"] ?? "localhost",
-    port: int.Parse(qdrantConfig["Port"] ?? "6334")));
+    port: int.Parse(qdrantConfig["Port"] ?? "6334"),
+    https: bool.Parse(qdrantConfig["UseTls"] ?? "false"),
+    apiKey: qdrantConfig["ApiKey"]));
 
 /*
  * ────────────────────────────────────────────────────────────────────────────────

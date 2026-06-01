@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef, type ChangeEvent } from 'react'
 import type { Role, Language } from '../hooks/useChat'
+import { useDocumentUpload } from '../hooks/useDocumentUpload'
 
 interface Props {
   onStart: (role: Role, resumeContext: string, language: Language) => void
@@ -20,6 +21,20 @@ export function RoleSelector({ onStart }: Props) {
   const [selectedRole, setSelectedRole] = useState<Role>(null)
   const [selectedLang, setSelectedLang] = useState<Language>('ru')
   const [resume, setResume] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { status: upload, upload: uploadFile } = useDocumentUpload()
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try { await uploadFile(file) } catch { /* статус выставлен хуком */ }
+  }
+
+  const uploadLabel = selectedLang === 'ru' ? 'Загрузить PDF' : 'Upload PDF'
+  const uploadHint = selectedLang === 'ru'
+    ? 'или прикрепи документ в базу знаний (RAG):'
+    : 'or attach a document to the knowledge base (RAG):'
 
   const placeholder = selectedLang === 'ru'
     ? 'Вставь текст резюме, список технологий или описание вакансии...'
@@ -99,6 +114,42 @@ export function RoleSelector({ onStart }: Props) {
           rows={4}
           className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-blue-500 transition-colors"
         />
+
+        {/* Загрузка PDF в RAG — альтернатива/дополнение к текстовому резюме */}
+        <div className="mt-3 flex items-center gap-3 flex-wrap">
+          <span className="text-xs text-slate-500">{uploadHint}</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={upload.kind === 'uploading'}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {upload.kind === 'uploading' ? (
+              <>
+                <span className="w-3 h-3 border-2 border-slate-500 border-t-blue-400 rounded-full animate-spin" />
+                {selectedLang === 'ru' ? 'Загружаю...' : 'Uploading...'}
+              </>
+            ) : (
+              <>📎 {uploadLabel}</>
+            )}
+          </button>
+
+          {upload.kind === 'success' && (
+            <span className="text-xs text-green-400">
+              ✓ {upload.fileName} — {upload.chunks} {selectedLang === 'ru' ? 'чанков' : 'chunks'}
+            </span>
+          )}
+          {upload.kind === 'error' && (
+            <span className="text-xs text-red-400">⚠️ {upload.message}</span>
+          )}
+        </div>
       </div>
 
       <button
