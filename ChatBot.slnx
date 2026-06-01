@@ -2,4 +2,5 @@
   <Project Path="ChatBot.Api/ChatBot.Api.csproj" />
   <Project Path="ChatBot.Core/ChatBot.Core.csproj" />
   <Project Path="ChatBot.Infrastructure/ChatBot.Infrastructure.csproj" />
+  <Project Path="ChatBot.Tests/ChatBot.Tests.csproj" />
 </Solution>

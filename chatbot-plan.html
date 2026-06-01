@@ -106,6 +106,40 @@
   </div>
 
   <div class="card" style="margin-bottom:1.5rem">
+    <h2 style="margin-bottom:0.75rem">API эндпоинты</h2>
+    <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem">
+      <div style="display:grid; grid-template-columns: 80px 1fr; gap:0.75rem; align-items:baseline">
+        <span style="color:#4ade80; font-family:'Cascadia Code',monospace; font-weight:600">POST</span>
+        <div>
+          <a href="http://localhost:5249/api/chat/stream" style="color:#38bdf8; text-decoration:none; font-family:'Cascadia Code',monospace">/api/chat/stream</a>
+          <div style="color:#94a3b8; font-size:0.8rem; margin-top:0.15rem">SSE-стрим ответа LLM. Body: <code>{ message, sessionId?, role?, resumeContext?, language? }</code></div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns: 80px 1fr; gap:0.75rem; align-items:baseline">
+        <span style="color:#4ade80; font-family:'Cascadia Code',monospace; font-weight:600">POST</span>
+        <div>
+          <a href="http://localhost:5249/api/documents/upload" style="color:#38bdf8; text-decoration:none; font-family:'Cascadia Code',monospace">/api/documents/upload</a>
+          <div style="color:#94a3b8; font-size:0.8rem; margin-top:0.15rem">Загрузка документа (multipart/form-data, поле <code>file</code>) → ingestion → Qdrant. Сейчас заглушка.</div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns: 80px 1fr; gap:0.75rem; align-items:baseline">
+        <span style="color:#64748b; font-family:'Cascadia Code',monospace; font-weight:600">GET</span>
+        <div>
+          <a href="http://localhost:5249/openapi/v1.json" target="_blank" style="color:#38bdf8; text-decoration:none; font-family:'Cascadia Code',monospace">/openapi/v1.json</a>
+          <div style="color:#94a3b8; font-size:0.8rem; margin-top:0.15rem">OpenAPI-схема (только Development).</div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns: 80px 1fr; gap:0.75rem; align-items:baseline; opacity:0.55">
+        <span style="color:#fb923c; font-family:'Cascadia Code',monospace; font-weight:600">GET*</span>
+        <div>
+          <span style="color:#fb923c; font-family:'Cascadia Code',monospace">/api/debug/history/{sessionId}</span>
+          <div style="color:#94a3b8; font-size:0.8rem; margin-top:0.15rem">Запланирован — дамп <code>ChatHistory</code> по сессии для отладки. Только Development.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.5rem">
     <h2 style="margin-bottom:0.75rem">Статус компонентов</h2>
     <div class="status-row">
       <span class="chip ok"><span class="dot"></span>dotnet build — 0 ошибок</span>
@@ -132,25 +166,25 @@
         <p>Tailwind, выбор роли (.NET/React/DevOps), SSE-стриминг, резюме-контекст, gpt-4o, 🇷🇺/🇬🇧 язык интервью</p>
       </div>
     </div>
-    <div class="stage">
-      <div class="stage-badge">3</div>
+    <div class="stage done">
+      <div class="stage-badge">✓</div>
       <div class="stage-info">
         <h3>Этап 3 — Интеграционные тесты</h3>
-        <p>xUnit, WebApplicationFactory, тесты эндпоинтов</p>
+        <p>xUnit + WebApplicationFactory, фейки IChatService/IIngestionService, SSE и multipart-upload — 3/3 passed</p>
       </div>
     </div>
-    <div class="stage">
-      <div class="stage-badge">4</div>
+    <div class="stage done">
+      <div class="stage-badge">✓</div>
       <div class="stage-info">
         <h3>Этап 4 — Ingestion Pipeline</h3>
-        <p>PdfPig парсинг → чанки → эмбеддинги → сохранение в Qdrant</p>
+        <p>PdfPig + TextChunker (1500/200, по границе предложения) + OpenAI embeddings + Qdrant upsert. Юнит-тесты чанкера 5/5.</p>
       </div>
     </div>
-    <div class="stage">
-      <div class="stage-badge">5</div>
+    <div class="stage done">
+      <div class="stage-badge">✓</div>
       <div class="stage-info">
         <h3>Этап 5 — RAG в чате</h3>
-        <p>Поиск по Qdrant, инжекция контекста в промпт, оценка качества</p>
+        <p>Эмбеддинг запроса → top-K поиск в Qdrant → инжекция чанков в системный промпт. Graceful при отсутствии коллекции.</p>
       </div>
     </div>
   </div>

@@ -16,6 +16,62 @@ public class ChatService(IChatCompletionService chatCompletion, IRagService ragS
     // Хранилище истории сессий в памяти — заменить на распределённый кэш в prod
     private readonly Dictionary<Guid, ChatHistory> _sessions = [];
 
+    /*
+     * ────────────────────────────────────────────────────────────────────────────
+     *  БУДУЩЕЕ: версия на Microsoft.Extensions.AI (IChatClient).
+     *  Главные отличия от SK:
+     *  1. Вместо ChatHistory (SK-специфичный класс) — List<ChatMessage> из M.E.AI
+     *  2. Вместо AddSystemMessage/AddUserMessage — конструктор ChatMessage(role, text)
+     *  3. Вместо GetStreamingChatMessageContentsAsync — GetStreamingResponseAsync
+     *
+     *  Закомментированная сигнатура (для рефактора на этапе 6+):
+     *
+     *  using Microsoft.Extensions.AI;
+     *
+     *  public class ChatService(IChatClient chatClient, IRagService ragService) : IChatService
+     *  {
+     *      // Тип сменился: ChatHistory → List<ChatMessage> (провайдер-агностичный)
+     *      private readonly Dictionary<Guid, List<ChatMessage>> _sessions = [];
+     *
+     *      public async IAsyncEnumerable<string> StreamAsync(
+     *          ChatRequest request,
+     *          [EnumeratorCancellation] CancellationToken ct = default)
+     *      {
+     *          var history = GetOrCreateHistory(...);   // теперь List<ChatMessage>
+     *
+     *          // Добавление сообщений — через конструктор record-а ChatMessage
+     *          // .NET: эквивалент new HttpRequestMessage(method, uri)
+     *          history.Add(new ChatMessage(ChatRole.System, contextText));
+     *          history.Add(new ChatMessage(ChatRole.User, request.Message));
+     *
+     *          var sb = new StringBuilder();
+     *
+     *          // GetStreamingResponseAsync вместо SK-шного GetStreamingChatMessageContentsAsync
+     *          // Возвращает IAsyncEnumerable<ChatResponseUpdate> — каждый update это дельта.
+     *          await foreach (var update in chatClient.GetStreamingResponseAsync(history, cancellationToken: ct))
+     *          {
+     *              // update.Text — текстовая дельта (раньше chunk.Content в SK)
+     *              // update также содержит FunctionCalls, FinishReason и др. метаданные
+     *              var token = update.Text ?? string.Empty;
+     *              if (!string.IsNullOrEmpty(token))
+     *              {
+     *                  sb.Append(token);
+     *                  yield return token;
+     *              }
+     *          }
+     *
+     *          // Финальное сообщение — assistant role
+     *          history.Add(new ChatMessage(ChatRole.Assistant, sb.ToString()));
+     *      }
+     *  }
+     *
+     *  Бонус: для function calling (когда понадобится — этап 7+) код почти не меняется,
+     *  потому что .UseFunctionInvocation() в Program.cs делает всё прозрачно — IChatClient
+     *  сам распарсит tool_calls из ответа, вызовет твою C# функцию и подставит результат.
+     *  В SK для этого нужны KernelPlugin/KernelFunction с атрибутами.
+     * ────────────────────────────────────────────────────────────────────────────
+     */
+
     /// <inheritdoc/>
     public async IAsyncEnumerable<string> StreamAsync(
         ChatRequest request,

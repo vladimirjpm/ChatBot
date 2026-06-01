@@ -9,6 +9,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.77.0" />
+    <!-- QdrantClient регистрируется в Program.cs для DI -->
+    <PackageReference Include="Qdrant.Client" Version="1.18.1" />
   </ItemGroup>
 
   <ItemGroup>

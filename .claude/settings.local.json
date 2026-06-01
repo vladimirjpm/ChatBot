@@ -5,7 +5,11 @@
       "Bash(dotnet sln *)",
       "Bash(dotnet add *)",
       "Bash(npm create *)",
-      "Bash(dotnet build *)"
+      "Bash(dotnet build *)",
+      "Bash(dotnet test *)",
+      "Bash(find C:/Users/Vladimir.Barentsev/.nuget/packages/qdrant.client/1.18.1/lib -name \"*.xml\" 2>/dev/null | head -3)",
+      "Bash(find C:/Users/Vladimir.Barentsev/.nuget/packages/microsoft.semantickernel.connectors.openai -name \"*.xml\" 2>/dev/null | head -2)",
+      "Bash(npx tsc *)"
     ]
   }
 }
