@@ -17,16 +17,18 @@ export type UploadStatus =
 export function useDocumentUpload() {
   const [status, setStatus] = useState<UploadStatus>({ kind: 'idle' })
 
-  const upload = useCallback(async (file: File) => {
+  // scope: 'shared' — виден всем, 'private' — только в текущей сессии
+  const upload = useCallback(async (file: File, scope: 'shared' | 'private', sessionId?: string) => {
     setStatus({ kind: 'uploading', fileName: file.name })
     try {
       const form = new FormData()
       form.append('file', file)
+      form.append('scope', scope)
+      if (scope === 'private' && sessionId) form.append('sessionId', sessionId)
       const res = await fetch(`${API_BASE}/api/documents/upload`, { method: 'POST', body: form })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data: { chunksIndexed: number; documentName: string } = await res.json()
       setStatus({ kind: 'success', fileName: data.documentName, chunks: data.chunksIndexed })
-      // Автоскрытие "успеха" через 5 сек, чтобы плашка не висела вечно
       setTimeout(() => setStatus(s => s.kind === 'success' ? { kind: 'idle' } : s), 5000)
       return data
     } catch (err) {

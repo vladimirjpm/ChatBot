@@ -189,21 +189,57 @@ app.MapPost("/api/chat/stream", async (ChatRequest request, IChatService chatSer
 .WithName("ChatStream")
 .WithTags("Chat");
 
-// Загрузка PDF-документа для RAG-индексации
-// .NET: [HttpPost("upload")] + IFormFile
-app.MapPost("/api/documents/upload", async (IFormFile file, IIngestionService ingestionService, CancellationToken ct) =>
+// Загрузка PDF-документа для RAG-индексации.
+// scope = "shared" (видно всем) | "private" (только в своей сессии).
+// .NET: [HttpPost("upload")] + IFormFile + [FromForm].
+app.MapPost("/api/documents/upload", async (
+    IFormFile file,
+    IIngestionService ingestionService,
+    HttpRequest req,
+    CancellationToken ct) =>
 {
     if (file.Length == 0)
         return Results.BadRequest("Файл пустой");
 
+    // Form-поля — multipart, не JSON. Берём напрямую из формы.
+    var scope = req.Form["scope"].ToString();
+    if (string.IsNullOrEmpty(scope)) scope = "private"; // безопасный дефолт
+    var sessionId = req.Form["sessionId"].ToString();
+    if (string.IsNullOrEmpty(sessionId)) sessionId = null!;
+
+    if (scope == "private" && string.IsNullOrEmpty(sessionId))
+        return Results.BadRequest("Для scope=private требуется sessionId");
+
     await using var stream = file.OpenReadStream();
-    var result = await ingestionService.IngestAsync(stream, file.FileName, ct);
+    var result = await ingestionService.IngestAsync(stream, file.FileName, scope, sessionId, ct);
 
     return Results.Ok(result);
 })
 .WithName("DocumentUpload")
 .WithTags("Documents")
 .DisableAntiforgery();
+
+// Список доступных в данной сессии документов (shared + свои private).
+app.MapGet("/api/documents", async (string? sessionId, IIngestionService svc, CancellationToken ct) =>
+    Results.Ok(await svc.ListAsync(sessionId, ct)))
+.WithName("DocumentList")
+.WithTags("Documents");
+
+// Удаление собственного приватного документа.
+// .NET: [HttpDelete("{name}")] + [FromQuery] sessionId.
+app.MapDelete("/api/documents/{name}", async (
+    string name,
+    string sessionId,
+    IIngestionService svc,
+    CancellationToken ct) =>
+{
+    if (string.IsNullOrEmpty(sessionId))
+        return Results.BadRequest("sessionId обязателен");
+    var removed = await svc.DeleteAsync(name, sessionId, ct);
+    return removed == 0 ? Results.NotFound() : Results.Ok(new { removed });
+})
+.WithName("DocumentDelete")
+.WithTags("Documents");
 
 app.Run();
 

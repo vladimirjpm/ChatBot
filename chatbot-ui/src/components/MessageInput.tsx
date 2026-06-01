@@ -6,19 +6,31 @@ interface Props {
   disabled: boolean
   onReset: () => void
   placeholder?: string
+  sessionId: string
+  onUploaded?: () => void
 }
 
-export function MessageInput({ onSend, disabled, onReset, placeholder }: Props) {
+export function MessageInput({ onSend, disabled, onReset, placeholder, sessionId, onUploaded }: Props) {
   const [text, setText] = useState('')
   const { status: upload, upload: uploadFile } = useDocumentUpload()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const sharedInputRef = useRef<HTMLInputElement>(null)
+  const privateInputRef = useRef<HTMLInputElement>(null)
+  const [pendingScope, setPendingScope] = useState<'shared' | 'private'>('private')
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    e.target.value = '' // позволяем повторно выбрать тот же файл
+    e.target.value = ''
     if (!file) return
-    try { await uploadFile(file) } catch { /* статус ошибки уже выставлен хуком */ }
+    try {
+      await uploadFile(file, pendingScope, sessionId)
+      onUploaded?.()
+    } catch { /* статус выставлен хуком */ }
+  }
+
+  const openPicker = (scope: 'shared' | 'private') => {
+    setPendingScope(scope)
+    ;(scope === 'shared' ? sharedInputRef : privateInputRef).current?.click()
   }
 
   const handleSend = () => {
@@ -79,23 +91,28 @@ export function MessageInput({ onSend, disabled, onReset, placeholder }: Props) 
           ↺
         </button>
 
-        {/* Загрузка документа в RAG */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf"
-          className="hidden"
-          onChange={handleFileChange}
-        />
+        {/* Загрузка документа в RAG — две кнопки на разные scope */}
+        <input ref={sharedInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
+        <input ref={privateInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
         <button
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => openPicker('private')}
           disabled={isUploading}
-          title="Загрузить PDF в базу знаний"
-          className="shrink-0 w-9 h-9 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex items-center justify-center text-lg disabled:opacity-30 disabled:cursor-not-allowed"
+          title="🔒 Загрузить только в эту сессию"
+          className="shrink-0 w-9 h-9 rounded-lg text-slate-400 hover:text-blue-300 hover:bg-slate-700 transition-colors flex items-center justify-center text-base disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          {isUploading ? (
+          {isUploading && pendingScope === 'private' ? (
             <span className="w-4 h-4 border-2 border-slate-500 border-t-blue-400 rounded-full animate-spin" />
-          ) : '📎'}
+          ) : '🔒'}
+        </button>
+        <button
+          onClick={() => openPicker('shared')}
+          disabled={isUploading}
+          title="🌐 Загрузить в общую базу"
+          className="shrink-0 w-9 h-9 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex items-center justify-center text-base disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          {isUploading && pendingScope === 'shared' ? (
+            <span className="w-4 h-4 border-2 border-slate-500 border-t-blue-400 rounded-full animate-spin" />
+          ) : '🌐'}
         </button>
 
         <textarea

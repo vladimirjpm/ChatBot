@@ -15,7 +15,10 @@ const API_BASE = import.meta.env.VITE_API_URL ?? ''
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
-  const sessionIdRef = useRef<string>(crypto.randomUUID())
+  // sessionId как state, чтобы reset() триггерил перерендер и пересчёт списка документов
+  const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID())
+  const sessionIdRef = useRef<string>(sessionId)
+  sessionIdRef.current = sessionId
   const abortRef = useRef<AbortController | null>(null)
 
   const sendMessage = useCallback(async (
@@ -97,10 +100,10 @@ export function useChat() {
 
   const reset = useCallback(() => {
     abortRef.current?.abort()
-    sessionIdRef.current = crypto.randomUUID()
+    setSessionId(crypto.randomUUID())
     setMessages([])
     setIsStreaming(false)
   }, [])
 
-  return { messages, isStreaming, sendMessage, reset }
+  return { messages, isStreaming, sendMessage, reset, sessionId }
 }

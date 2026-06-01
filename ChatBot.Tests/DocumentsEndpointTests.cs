@@ -32,23 +32,63 @@ public class DocumentsEndpointTests : IClassFixture<TestWebFactory>
     }
 
     [Fact]
-    public async Task Upload_ValidFile_ReturnsIngestionResult()
+    public async Task Upload_Shared_ReturnsIngestionResult()
     {
         var client = _factory.CreateClient();
 
-        using var content = new MultipartFormDataContent();
+        using var content = new MultipartFormDataContent
+        {
+            { new StringContent("shared"), "scope" }
+        };
         var bytes = Encoding.UTF8.GetBytes("fake-pdf-bytes");
         var file = new ByteArrayContent(bytes);
         file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
-        content.Add(file, "file", "resume.pdf");
+        content.Add(file, "file", "shared-doc.pdf");
 
         var response = await client.PostAsync("/api/documents/upload", content);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
         var result = await response.Content.ReadFromJsonAsync<IngestionResult>();
         Assert.NotNull(result);
-        Assert.Equal("resume.pdf", result!.DocumentName);
+        Assert.Equal("shared-doc.pdf", result!.DocumentName);
         Assert.Equal(7, result.ChunksIndexed);
+    }
+
+    [Fact]
+    public async Task Upload_Private_RequiresSessionId()
+    {
+        var client = _factory.CreateClient();
+
+        using var content = new MultipartFormDataContent
+        {
+            { new StringContent("private"), "scope" }
+            // sessionId намеренно не передаём
+        };
+        var file = new ByteArrayContent(Encoding.UTF8.GetBytes("fake"));
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        content.Add(file, "file", "cv.pdf");
+
+        var response = await client.PostAsync("/api/documents/upload", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Upload_Private_WithSession_Ok()
+    {
+        var client = _factory.CreateClient();
+
+        using var content = new MultipartFormDataContent
+        {
+            { new StringContent("private"), "scope" },
+            { new StringContent(Guid.NewGuid().ToString()), "sessionId" }
+        };
+        var file = new ByteArrayContent(Encoding.UTF8.GetBytes("fake"));
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        content.Add(file, "file", "cv.pdf");
+
+        var response = await client.PostAsync("/api/documents/upload", content);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }

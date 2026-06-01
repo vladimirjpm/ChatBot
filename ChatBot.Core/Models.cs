@@ -37,6 +37,12 @@ public class ChatSession
 public record ChatRequest(string Message, Guid? SessionId = null, string? Role = null, string? ResumeContext = null, string? Language = "ru");
 
 /// <summary>
-/// Запрос на загрузку документа для индексации.
+/// Результат загрузки документа.
 /// </summary>
 public record IngestionResult(int ChunksIndexed, string DocumentName);
+
+/// <summary>
+/// Информация о загруженном документе для отображения в UI.
+/// Scope: "shared" (виден всем) или "private" (только в своей сессии).
+/// </summary>
+public record DocumentInfo(string Name, string Scope, int Chunks);

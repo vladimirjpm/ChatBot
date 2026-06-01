@@ -28,10 +28,16 @@ public sealed class FakeChatService : IChatService
 }
 
 /// <summary>
-/// Фейк <see cref="IIngestionService"/> — возвращает фиксированный <see cref="IngestionResult"/>.
+/// Фейк <see cref="IIngestionService"/> — возвращает фиксированные ответы, ничего не пишет.
 /// </summary>
 public sealed class FakeIngestionService : IIngestionService
 {
-    public Task<IngestionResult> IngestAsync(Stream stream, string fileName, CancellationToken ct = default)
+    public Task<IngestionResult> IngestAsync(Stream stream, string fileName, string scope, string? sessionId, CancellationToken ct = default)
         => Task.FromResult(new IngestionResult(ChunksIndexed: 7, DocumentName: fileName));
+
+    public Task<IReadOnlyList<DocumentInfo>> ListAsync(string? sessionId, CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<DocumentInfo>>([]);
+
+    public Task<int> DeleteAsync(string documentName, string sessionId, CancellationToken ct = default)
+        => Task.FromResult(0);
 }

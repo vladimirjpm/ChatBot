@@ -77,10 +77,12 @@ public class ChatService(IChatCompletionService chatCompletion, IRagService ragS
         ChatRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var history = GetOrCreateHistory(request.SessionId, request.Role, request.ResumeContext, request.Language);
+        // Гарантируем что у сессии есть стабильный ID (нужен и для истории, и для приватного RAG)
+        var sessionId = request.SessionId ?? Guid.NewGuid();
+        var history = GetOrCreateHistory(sessionId, request.Role, request.ResumeContext, request.Language);
 
-        // Ищем релевантные чанки и строим системный контекст (RAG — этап 5)
-        var chunks = await ragService.SearchAsync(request.Message, topK: 5, ct: cancellationToken);
+        // Ищем релевантные чанки: shared + приватные именно этой сессии
+        var chunks = await ragService.SearchAsync(request.Message, sessionId.ToString(), topK: 5, ct: cancellationToken);
         if (chunks.Count > 0)
         {
             var context = string.Join("\n\n", chunks.Select(c => $"[{c.DocumentName} стр.{c.PageNumber}]\n{c.Text}"));
@@ -106,14 +108,13 @@ public class ChatService(IChatCompletionService chatCompletion, IRagService ragS
         history.AddAssistantMessage(sb.ToString());
     }
 
-    private ChatHistory GetOrCreateHistory(Guid? sessionId, string? role, string? resumeContext, string? language = "ru")
+    private ChatHistory GetOrCreateHistory(Guid sessionId, string? role, string? resumeContext, string? language = "ru")
     {
-        var id = sessionId ?? Guid.NewGuid();
-        if (!_sessions.TryGetValue(id, out var history))
+        if (!_sessions.TryGetValue(sessionId, out var history))
         {
             var systemPrompt = BuildSystemPrompt(role, resumeContext, language);
             history = new ChatHistory(systemPrompt);
-            _sessions[id] = history;
+            _sessions[sessionId] = history;
         }
         return history;
     }
