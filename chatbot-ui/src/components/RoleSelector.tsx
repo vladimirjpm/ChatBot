@@ -23,7 +23,7 @@ const LANGS: { id: Language; label: string; flag: string }[] = [
 
 export function RoleSelector({ onStart, sessionId }: Props) {
   const [selectedRole, setSelectedRole] = useState<Role>(null)
-  const [selectedLang, setSelectedLang] = useState<Language>('ru')
+  const [selectedLang, setSelectedLang] = useState<Language>('en')
   const [selectedMode, setSelectedMode] = useState<Mode>('interview')
   const [resume, setResume] = useState('')
   const sharedInputRef = useRef<HTMLInputElement>(null)

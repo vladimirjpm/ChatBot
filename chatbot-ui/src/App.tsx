@@ -15,7 +15,7 @@ const ROLE_LABELS: Record<NonNullable<Role>, string> = {
 
 export default function App() {
   const [activeRole, setActiveRole] = useState<Role>(null)
-  const [activeLang, setActiveLang] = useState<Language>('ru')
+  const [activeLang, setActiveLang] = useState<Language>('en')
   const [activeMode, setActiveMode] = useState<Mode | null>(null)
   const [docsOpen, setDocsOpen] = useState(false)
   const { messages, isStreaming, sendMessage, reset, sessionId } = useChat()

@@ -20,8 +20,8 @@ const en: Strings = enRaw.ui
 export function t(lang: Language): Strings {
   switch (lang) {
     case 'en': return en
-    case 'ru':
-    default: return ru
+    case 'ru': return ru
+    default:   return en
   }
 }
 
