@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 
 export type Role = 'dotnet' | 'react' | 'devops' | null
 export type Language = 'ru' | 'en'
+export type Mode = 'interview' | 'assistant'
 
 export interface Message {
   id: string
@@ -25,7 +26,8 @@ export function useChat() {
     text: string,
     role: Role,
     resumeContext?: string,
-    language: Language = 'ru'
+    language: Language = 'ru',
+    mode: Mode = 'interview'
   ) => {
     if (isStreaming || !text.trim()) return
 
@@ -45,10 +47,11 @@ export function useChat() {
         body: JSON.stringify({
           message: text,
           sessionId: sessionIdRef.current,
-          // Role, Language и ResumeContext передаются только при первом сообщении
+          // Role, Language, ResumeContext, Mode фиксируются на бэке при первом сообщении сессии
           role: messages.length === 0 ? role : undefined,
           resumeContext: messages.length === 0 ? resumeContext : undefined,
           language: messages.length === 0 ? language : undefined,
+          mode: messages.length === 0 ? mode : undefined,
         }),
         signal: abortRef.current.signal,
       })

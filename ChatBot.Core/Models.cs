@@ -34,7 +34,15 @@ public class ChatSession
 /// <summary>
 /// Language — язык интервью: "ru" или "en". По умолчанию русский.
 /// </summary>
-public record ChatRequest(string Message, Guid? SessionId = null, string? Role = null, string? ResumeContext = null, string? Language = "ru");
+public record ChatRequest(
+    string Message,
+    Guid? SessionId = null,
+    string? Role = null,
+    string? ResumeContext = null,
+    string? Language = "ru",
+    // "interview" — симулятор собеседования, RAG в роли вспомогательного контекста (мягкий grounding)
+    // "assistant" — RAG-чат поверх документов с жёстким grounding ("не нашёл — не знаю")
+    string? Mode = null);
 
 /// <summary>
 /// Результат загрузки документа.

@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using ChatBot.Core;
 using ChatBot.Core.Interfaces;
+using ChatBot.Infrastructure.Localization;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 
@@ -11,10 +12,20 @@ namespace ChatBot.Infrastructure.Services;
 /// Поддерживает историю в памяти процесса (без персистентности).
 /// Для продакшна историю нужно хранить в Redis или PostgreSQL.
 /// </summary>
-public class ChatService(IChatCompletionService chatCompletion, IRagService ragService) : IChatService
+public class ChatService(
+    IChatCompletionService chatCompletion,
+    IRagService ragService,
+    ILocalizationProvider localization) : IChatService
 {
-    // Хранилище истории сессий в памяти — заменить на распределённый кэш в prod
-    private readonly Dictionary<Guid, ChatHistory> _sessions = [];
+    /// <summary>
+    /// Состояние сессии: базовый системный промпт (фиксируется при первом сообщении)
+    /// и хронология user/assistant. RAG-контекст и grounding-правила НЕ сохраняются —
+    /// они инжектятся свежими на каждый запрос, иначе устаревшие чанки засоряли бы контекст.
+    /// </summary>
+    private sealed record SessionState(string BaseSystemPrompt, List<(AuthorRole Role, string Content)> History);
+
+    // Хранилище сессий в памяти — заменить на распределённый кэш в prod
+    private readonly Dictionary<Guid, SessionState> _sessions = [];
 
     /*
      * ────────────────────────────────────────────────────────────────────────────
@@ -77,24 +88,34 @@ public class ChatService(IChatCompletionService chatCompletion, IRagService ragS
         ChatRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        // Гарантируем что у сессии есть стабильный ID (нужен и для истории, и для приватного RAG)
         var sessionId = request.SessionId ?? Guid.NewGuid();
-        var history = GetOrCreateHistory(sessionId, request.Role, request.ResumeContext, request.Language);
+        var mode = string.IsNullOrEmpty(request.Mode)
+            // Совместимость: если режим не указан — определяем по наличию роли (старое поведение)
+            ? (string.IsNullOrEmpty(request.Role) ? "assistant" : "interview")
+            : request.Mode;
+
+        var session = GetOrCreateSession(sessionId, mode, request.Role, request.ResumeContext, request.Language);
 
         // Ищем релевантные чанки: shared + приватные именно этой сессии
         var chunks = await ragService.SearchAsync(request.Message, sessionId.ToString(), topK: 5, ct: cancellationToken);
+
+        // Собираем промпт СВЕЖИМ на каждый запрос: base system + grounding + RAG → пары user/assistant → новое сообщение.
+        // Старые RAG-контексты не утекают в следующие запросы, потому что не записываются в _sessions.
+        var locale = localization.Get(request.Language);
+        var prompt = new ChatHistory(session.BaseSystemPrompt);
         if (chunks.Count > 0)
         {
+            var grounding = mode == "assistant" ? locale.GroundingHard : locale.GroundingSoft;
             var context = string.Join("\n\n", chunks.Select(c => $"[{c.DocumentName} стр.{c.PageNumber}]\n{c.Text}"));
-            history.AddSystemMessage($"Используй следующий контекст для ответа:\n{context}");
+            prompt.AddSystemMessage($"{grounding}\n\n{locale.ContextHeader}\n{context}");
         }
-
-        history.AddUserMessage(request.Message);
+        foreach (var (role, content) in session.History)
+            prompt.AddMessage(role, content);
+        prompt.AddUserMessage(request.Message);
 
         var sb = new System.Text.StringBuilder();
 
-        // Semantic Kernel StreamingChatMessageContentsAsync — аналог IAsyncEnumerable<StreamingChatCompletionUpdate> в M.Extensions.AI
-        await foreach (var chunk in chatCompletion.GetStreamingChatMessageContentsAsync(history, cancellationToken: cancellationToken))
+        await foreach (var chunk in chatCompletion.GetStreamingChatMessageContentsAsync(prompt, cancellationToken: cancellationToken))
         {
             var token = chunk.Content ?? string.Empty;
             if (!string.IsNullOrEmpty(token))
@@ -104,77 +125,46 @@ public class ChatService(IChatCompletionService chatCompletion, IRagService ragS
             }
         }
 
-        // Сохраняем полный ответ ассистента в историю
-        history.AddAssistantMessage(sb.ToString());
+        // Сохраняем в долговременную историю ТОЛЬКО user/assistant — без RAG-системников.
+        session.History.Add((AuthorRole.User, request.Message));
+        session.History.Add((AuthorRole.Assistant, sb.ToString()));
     }
 
-    private ChatHistory GetOrCreateHistory(Guid sessionId, string? role, string? resumeContext, string? language = "ru")
+    private SessionState GetOrCreateSession(Guid sessionId, string mode, string? role, string? resumeContext, string? language)
     {
-        if (!_sessions.TryGetValue(sessionId, out var history))
+        if (!_sessions.TryGetValue(sessionId, out var state))
         {
-            var systemPrompt = BuildSystemPrompt(role, resumeContext, language);
-            history = new ChatHistory(systemPrompt);
-            _sessions[sessionId] = history;
+            var basePrompt = BuildSystemPrompt(mode, role, resumeContext, language);
+            state = new SessionState(basePrompt, []);
+            _sessions[sessionId] = state;
         }
-        return history;
+        return state;
     }
 
     /// <summary>
-    /// Строит системный промпт в зависимости от режима:
-    /// симулятор собеседований (с опциональным резюме) или обычный ассистент.
+    /// Строит базовый системный промпт сессии из загруженной локали.
+    /// Режимы: "interview" (симулятор собеседования) или "assistant" (RAG-чат).
     /// </summary>
-    private static string BuildSystemPrompt(string? role, string? resumeContext, string? language = "ru")
+    private string BuildSystemPrompt(string mode, string? role, string? resumeContext, string? language)
     {
+        var locale = localization.Get(language);
+
+        if (mode == "assistant")
+            return locale.AssistantBase;
+
         if (string.IsNullOrWhiteSpace(role))
-            return "Ты полезный ассистент. Отвечай на основе предоставленного контекста, если он есть.";
+            return locale.GenericAssistant;
 
-        var isEnglish = language?.ToLowerInvariant() == "en";
+        var roleName = locale.RoleNames.GetValueOrDefault(role.ToLowerInvariant())
+            ?? role + locale.UnknownRoleSuffix;
 
-        var roleName = role.ToLowerInvariant() switch
-        {
-            "dotnet" => isEnglish ? ".NET / C# Developer" : ".NET / C# разработчика",
-            "react"  => isEnglish ? "React / TypeScript Developer" : "React / TypeScript разработчика",
-            "devops" => isEnglish ? "DevOps / Cloud Engineer" : "DevOps / Cloud инженера",
-            _        => role + (isEnglish ? " Developer" : " разработчика")
-        };
+        var prompt = Locale.Format(locale.InterviewRules, new Dictionary<string, string> { ["roleName"] = roleName });
 
-        // Правила и инструкции на языке интервью
-        var prompt = isEnglish
-            ? $"""
-            You are an experienced technical interviewer conducting a job interview for a {roleName} position.
-
-            Rules:
-            - Ask ONE question at a time and wait for the candidate's answer
-            - After each answer: give a score from 1 to 10 and brief feedback (1-2 sentences)
-            - Then ask the next question
-            - Questions should vary in difficulty: from basic to advanced
-            - Be specific, professional, and friendly
-            - Always respond in English
-            """
-            : $"""
-            Ты опытный технический интервьюер, проводишь собеседование на позицию {roleName}.
-
-            Правила:
-            - Задавай ОДИН вопрос за раз, жди ответа кандидата
-            - После каждого ответа: дай оценку от 1 до 10 и краткий фидбек (1-2 предложения)
-            - Затем задай следующий вопрос
-            - Вопросы должны быть разного уровня: от базовых к сложным
-            - Будь конкретным, профессиональным, но доброжелательным
-            - Всегда отвечай на русском языке
-            """;
-
-        // Если кандидат предоставил резюме — адаптируй вопросы под его опыт
         if (!string.IsNullOrWhiteSpace(resumeContext))
-        {
-            prompt += isEnglish
-                ? $"\n\nCandidate's resume / context:\n{resumeContext}\n\nAdapt your questions based on the candidate's experience."
-                : $"\n\nРезюме / контекст кандидата:\n{resumeContext}\n\nАдаптируй вопросы под опыт кандидата из резюме.";
-        }
+            prompt += Locale.Format(locale.InterviewResumeAddendum, new Dictionary<string, string> { ["resume"] = resumeContext });
 
-        prompt += isEnglish
-            ? "\n\nStart with a brief greeting and your first question."
-            : "\n\nНачни с приветствия и первого вопроса.";
-
+        prompt += locale.InterviewStartCue;
         return prompt;
     }
+
 }

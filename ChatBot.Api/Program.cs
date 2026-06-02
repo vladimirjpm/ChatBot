@@ -1,6 +1,7 @@
 using ChatBot.Api.HealthChecks;
 using ChatBot.Core;
 using ChatBot.Core.Interfaces;
+using ChatBot.Infrastructure.Localization;
 using ChatBot.Infrastructure.Services;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -116,6 +117,13 @@ builder.Services.AddSingleton(new QdrantClient(
  */
 
 // .NET: builder.Services.AddScoped<IRagService, RagService>()
+// Локализация. JSON-файлы лежат рядом с бинарником (копируются через .csproj Content include).
+// Singleton — читаем один раз на старте, дальше всё в памяти.
+builder.Services.AddSingleton<ILocalizationProvider>(sp => new JsonLocalizationProvider(
+    localesDirectory: Path.Combine(AppContext.BaseDirectory, "locales"),
+    defaultLanguage: builder.Configuration["Localization:DefaultLanguage"] ?? "ru",
+    logger: sp.GetRequiredService<ILoggerFactory>().CreateLogger<JsonLocalizationProvider>()));
+
 builder.Services.AddScoped<IRagService, RagService>();
 builder.Services.AddScoped<IIngestionService, IngestionService>();
 builder.Services.AddScoped<IChatService, ChatService>();
