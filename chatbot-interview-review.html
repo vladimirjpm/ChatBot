@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChatBot — Tech Review для интервью</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 2rem; }
+    h1 { font-size: 1.75rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.25rem; }
+    .subtitle { color: #94a3b8; margin-bottom: 2rem; font-size: 0.95rem; }
+
+    h2.section { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #475569; margin: 2rem 0 0.75rem; }
+
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+    .card-title { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 1rem; }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    @media (max-width: 750px) { .grid2 { grid-template-columns: 1fr; } }
+
+    /* Score badge */
+    .score { display: inline-flex; align-items: center; justify-content: center;
+      width: 2.2rem; height: 2.2rem; border-radius: 50%; font-size: 0.85rem; font-weight: 700; flex-shrink: 0; }
+    .score-high  { background: #052e16; color: #4ade80; border: 2px solid #16a34a; }
+    .score-mid   { background: #1c1a08; color: #facc15; border: 2px solid #854d0e; }
+    .score-low   { background: #1c0808; color: #f87171; border: 2px solid #991b1b; }
+    .score-zero  { background: #1a0a0a; color: #ef4444; border: 2px solid #7f1d1d; }
+
+    /* Section rows */
+    .section-row { display: flex; align-items: flex-start; gap: 1rem; padding: 0.85rem 0; border-bottom: 1px solid #1e293b; }
+    .section-row:last-child { border-bottom: none; }
+    .section-body { flex: 1; min-width: 0; }
+    .section-label { font-size: 0.9rem; font-weight: 600; color: #e2e8f0; margin-bottom: 0.2rem; }
+    .section-desc { font-size: 0.82rem; color: #64748b; line-height: 1.5; }
+
+    /* Status chips */
+    .chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.65rem;
+      border-radius: 999px; font-size: 0.78rem; font-weight: 500; margin: 0.15rem 0.15rem 0 0; }
+    .chip.ok    { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+    .chip.warn  { background: #1c1008; color: #fb923c; border: 1px solid #7c2d12; }
+    .chip.bad   { background: #1c0808; color: #f87171; border: 1px solid #7f1d1d; }
+    .chip.info  { background: #0c1a3a; color: #93c5fd; border: 1px solid #1e40af; }
+    .chip.fixed { background: #052e16; color: #4ade80; border: 1px solid #16a34a; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    /* Skill table */
+    table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    th { text-align: left; padding: 0.5rem 0.75rem; font-size: 0.72rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.07em; color: #475569;
+      border-bottom: 1px solid #334155; }
+    td { padding: 0.55rem 0.75rem; border-bottom: 1px solid #1e293b; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    td.skill-name { color: #e2e8f0; font-weight: 500; }
+    td.skill-tip  { color: #64748b; font-size: 0.79rem; }
+    td.skill-present { }
+
+    /* Top-10 improvements */
+    .improve-row { display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid #1e293b; }
+    .improve-row:last-child { border-bottom: none; }
+    .improve-num { min-width: 1.8rem; height: 1.8rem; border-radius: 6px; background: #0f172a;
+      border: 1px solid #334155; display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; color: #64748b; flex-shrink: 0; }
+    .improve-num.fixed-num { background: #052e16; border-color: #16a34a; color: #4ade80; }
+    .improve-body { flex: 1; }
+    .improve-title { font-size: 0.88rem; font-weight: 600; color: #e2e8f0; margin-bottom: 0.15rem; }
+    .improve-title.fixed-title { color: #4ade80; }
+    .improve-meta { font-size: 0.79rem; color: #64748b; }
+    .effort-badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 4px;
+      font-size: 0.72rem; font-weight: 600; margin-right: 0.4rem; }
+    .effort-s { background: #052e16; color: #4ade80; }
+    .effort-m { background: #1c1a08; color: #facc15; }
+    .effort-l { background: #1c0808; color: #f87171; }
+
+    /* Q&A list */
+    .qa-list { display: flex; flex-direction: column; gap: 0.6rem; }
+    .qa-item { background: #0f172a; border: 1px solid #1e3a5f; border-radius: 8px;
+      padding: 0.65rem 1rem; font-size: 0.85rem; color: #93c5fd; line-height: 1.5; }
+    .qa-item.danger { border-color: #7f1d1d; color: #fca5a5; }
+
+    /* Verdict */
+    .verdict { background: linear-gradient(135deg, #0c1a3a, #1e293b); border: 1px solid #1e40af;
+      border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+    .verdict-score { font-size: 3rem; font-weight: 800; color: #facc15; line-height: 1; }
+    .verdict-label { font-size: 0.85rem; color: #64748b; margin-top: 0.25rem; }
+
+    /* Strengths / Weaknesses */
+    .sw-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .sw-list li { font-size: 0.85rem; padding-left: 1.4rem; position: relative; line-height: 1.5; }
+    .sw-list.strong li::before { content: '✅'; position: absolute; left: 0; }
+    .sw-list.weak   li::before { content: '🔴'; position: absolute; left: 0; }
+
+    /* Честно рассказывать */
+    .tell-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .tell-list li { font-size: 0.85rem; padding: 0.6rem 0.9rem; background: #0f172a;
+      border-left: 3px solid #16a34a; border-radius: 0 6px 6px 0; line-height: 1.5; color: #cbd5e1; }
+  </style>
+</head>
+<body>
+
+  <h1>ChatBot — Tech Review для интервью</h1>
+  <p class="subtitle">Позиция: Senior Software Engineer · AI &amp; Advanced Technologies</p>
+
+  <!-- VERDICT -->
+  <div class="grid2">
+    <div class="verdict">
+      <div class="verdict-score">55%</div>
+      <div class="verdict-label">соответствие вакансии · обновится по мере фиксов</div>
+      <div style="margin-top:1rem; font-size:0.83rem; color:#94a3b8; line-height:1.6">
+        Проект показывает хорошее понимание AI-интеграций и чистой архитектуры.
+        Закрывает меньше половины требований из-за отсутствия Node.js, SQL, CI/CD и Monitoring.
+        Топ-5 фиксов из списка ниже поднимут показатель до ~70%.
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">Быстрый статус</div>
+      <div style="display:flex; flex-direction:column; gap:0.5rem">
+        <div><span class="chip ok"><span class="dot"></span>AI / RAG Pipeline</span><span class="chip ok"><span class="dot"></span>Clean Architecture</span></div>
+        <div><span class="chip ok"><span class="dot"></span>TypeScript строгий</span><span class="chip ok"><span class="dot"></span>SSE Streaming</span></div>
+        <div><span class="chip ok"><span class="dot"></span>Docker multi-stage</span><span class="chip ok"><span class="dot"></span>Integration Tests</span></div>
+        <div><span class="chip bad"><span class="dot"></span>Node.js — отсутствует</span><span class="chip bad"><span class="dot"></span>CI/CD — отсутствует</span></div>
+        <div><span class="chip bad"><span class="dot"></span>SQL — только в конфиге</span><span class="chip bad"><span class="dot"></span>Monitoring — минимум</span></div>
+        <div><span class="chip warn"><span class="dot"></span>Security — базовая</span><span class="chip warn"><span class="dot"></span>Redis — не подключён</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SKILL TABLE -->
+  <h2 class="section">L. Таблица соответствия вакансии</h2>
+  <div class="card" style="padding:0; overflow:hidden">
+    <table>
+      <thead>
+        <tr>
+          <th>Навык</th>
+          <th>Есть в проекте</th>
+          <th style="width:80px; text-align:center">Оценка</th>
+          <th>Что улучшить</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="skill-name">Full Stack</td>
+          <td class="skill-present"><span class="chip ok">React + .NET API</span></td>
+          <td style="text-align:center"><span class="score score-high">7</span></td>
+          <td class="skill-tip">Добавить auth flow end-to-end</td>
+        </tr>
+        <tr>
+          <td class="skill-name">Node.js</td>
+          <td class="skill-present"><span class="chip bad">Отсутствует — проект на .NET</span></td>
+          <td style="text-align:center"><span class="score score-zero">1</span></td>
+          <td class="skill-tip">Отдельный Node.js BFF или скрипт</td>
+        </tr>
+        <tr>
+          <td class="skill-name">React</td>
+          <td class="skill-present"><span class="chip ok">Хуки, кастомные хуки</span></td>
+          <td style="text-align:center"><span class="score score-high">7</span></td>
+          <td class="skill-tip">Error Boundary, React Query</td>
+        </tr>
+        <tr>
+          <td class="skill-name">TypeScript</td>
+          <td class="skill-present"><span class="chip ok">Строгий, discriminated unions</span></td>
+          <td style="text-align:center"><span class="score score-high">8</span></td>
+          <td class="skill-tip">—</td>
+        </tr>
+        <tr>
+          <td class="skill-name">LLM / AI</td>
+          <td class="skill-present"><span class="chip ok">SK + RAG + streaming + Qdrant</span></td>
+          <td style="text-align:center"><span class="score score-high">8</span></td>
+          <td class="skill-tip">Tool calling, evals</td>
+        </tr>
+        <tr>
+          <td class="skill-name">Ownership полного цикла</td>
+          <td class="skill-present"><span class="chip ok">Анализ → код → тесты → деплой</span></td>
+          <td style="text-align:center"><span class="score score-high">7</span></td>
+          <td class="skill-tip">CI/CD</td>
+        </tr>
+        <tr>
+          <td class="skill-name">Архитектурный дизайн</td>
+          <td class="skill-present"><span class="chip ok">Clean Arch, DI, интерфейсы</span></td>
+          <td style="text-align:center"><span class="score score-high">7</span></td>
+          <td class="skill-tip">Решить Scoped bug, подключить Redis</td>
+        </tr>
+        <tr>
+          <td class="skill-name">Тестирование</td>
+          <td class="skill-present"><span class="chip warn">Integration + Unit, WebAppFactory</span></td>
+          <td style="text-align:center"><span class="score score-mid">5</span></td>
+          <td class="skill-tip">E2E, coverage, unit-тест ChatService</td>
+        </tr>
+        <tr>
+          <td class="skill-name">Deployment</td>
+          <td class="skill-present"><span class="chip ok">Docker + Railway + Vercel</span></td>
+          <td style="text-align:center"><span class="score score-mid">6</span></td>
+          <td class="skill-tip">CI/CD pipeline</td>
+        </tr>
+        <tr>
+          <td class="skill-name">Monitoring</td>
+          <td class="skill-present"><span class="chip bad">Только /health checks</span></td>
+          <td style="text-align:center"><span class="score score-zero">2</span></td>
+          <td class="skill-tip">OpenTelemetry + метрики</td>
+        </tr>
+        <tr>
+          <td class="skill-name">Docker</td>
+          <td class="skill-present"><span class="chip ok">Multi-stage, layer caching</span></td>
+          <td style="text-align:center"><span class="score score-high">7</span></td>
+          <td class="skill-tip">HEALTHCHECK, non-root user</td>
+        </tr>
+        <tr>
+          <td class="skill-name">CI/CD</td>
+          <td class="skill-present"><span class="chip bad">Нет совсем</span></td>
+          <td style="text-align:center"><span class="score score-zero">0</span></td>
+          <td class="skill-tip">GitHub Actions: build + test + deploy</td>
+        </tr>
+        <tr>
+          <td class="skill-name">Cloud readiness</td>
+          <td class="skill-present"><span class="chip warn">Railway, env vars, health probes</span></td>
+          <td style="text-align:center"><span class="score score-mid">5</span></td>
+          <td class="skill-tip">Stateless sessions (Redis)</td>
+        </tr>
+        <tr>
+          <td class="skill-name">SQL</td>
+          <td class="skill-present"><span class="chip bad">Есть в compose, нет в коде</span></td>
+          <td style="text-align:center"><span class="score score-zero">1</span></td>
+          <td class="skill-tip">EF Core + миграции + история чатов</td>
+        </tr>
+        <tr>
+          <td class="skill-name">NoSQL</td>
+          <td class="skill-present"><span class="chip warn">Qdrant ✓ · Redis — не подключён</span></td>
+          <td style="text-align:center"><span class="score score-low">4</span></td>
+          <td class="skill-tip">Подключить Redis для сессий</td>
+        </tr>
+        <tr>
+          <td class="skill-name">Security</td>
+          <td class="skill-present"><span class="chip bad">CORS AllowAny · нет auth</span></td>
+          <td style="text-align:center"><span class="score score-low">3</span></td>
+          <td class="skill-tip">Auth, CORS restrict, rate limiting</td>
+        </tr>
+        <tr>
+          <td class="skill-name">Performance</td>
+          <td class="skill-present"><span class="chip warn">Базовая</span></td>
+          <td style="text-align:center"><span class="score score-low">4</span></td>
+          <td class="skill-tip">Caching, backpressure SSE</td>
+        </tr>
+        <tr>
+          <td class="skill-name">Microservices / Monolith</td>
+          <td class="skill-present"><span class="chip warn">Монолит, Clean Arch</span></td>
+          <td style="text-align:center"><span class="score score-mid">5</span></td>
+          <td class="skill-tip">Уметь объяснить trade-offs</td>
+        </tr>
+        <tr>
+          <td class="skill-name">AI-assisted development</td>
+          <td class="skill-present"><span class="chip ok">Инструмент сам — AI продукт</span></td>
+          <td style="text-align:center"><span class="score score-high">7</span></td>
+          <td class="skill-tip">Описать процесс разработки с AI</td>
+        </tr>
+        <tr>
+          <td class="skill-name">Product mindset</td>
+          <td class="skill-present"><span class="chip warn">Есть user flow, режимы</span></td>
+          <td style="text-align:center"><span class="score score-mid">6</span></td>
+          <td class="skill-tip">Метрики, retention, onboarding</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SECTION REVIEWS -->
+  <h2 class="section">Детальный разбор по разделам</h2>
+  <div class="grid2">
+
+    <div class="card">
+      <div class="card-title">A. Бизнес-задача / Product Mindset</div>
+      <div class="section-row">
+        <span class="score score-mid">6</span>
+        <div class="section-body">
+          <div class="section-label">Реализовано</div>
+          <div class="section-desc">Два режима (interview / assistant), scope документов (shared / private), multilingual, streaming UX.</div>
+        </div>
+      </div>
+      <div class="section-row">
+        <div style="width:2.2rem; flex-shrink:0"></div>
+        <div class="section-body">
+          <div class="section-label" style="color:#fb923c">Что отсутствует</div>
+          <div class="section-desc">Аутентификация, история между сессиями, аналитика, rate limiting, onboarding.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">B. Архитектура</div>
+      <div class="section-row">
+        <span class="score score-high">7</span>
+        <div class="section-body">
+          <div class="section-label">Реализовано</div>
+          <div class="section-desc">Core / Infrastructure / Api — Onion. DI через интерфейсы. Провайдер-агностичный IEmbeddingGenerator. Комментарии с дорожной картой (M.Extensions.AI).</div>
+        </div>
+      </div>
+      <div class="section-row">
+        <div style="width:2.2rem; flex-shrink:0"></div>
+        <div class="section-body">
+          <div class="section-label" style="color:#f87171">⚠️ Критично</div>
+          <div class="section-desc"><s style="color:#4ade80"><code>AddScoped&lt;IChatService&gt;</code> + <code>Dictionary&lt;Guid,SessionState&gt;</code> в instance — новый экземпляр на каждый запрос, история теряется</s> <span class="chip fixed"><span class="dot"></span>fixed</span>. <s style="color:#4ade80">CORS AllowAnyOrigin</s> <span class="chip fixed"><span class="dot"></span>fixed</span>. Нет UseExceptionHandler. PostgreSQL / Redis только в конфиге.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">C. Frontend</div>
+      <div class="section-row">
+        <span class="score score-mid">6</span>
+        <div class="section-body">
+          <div class="section-label">Реализовано</div>
+          <div class="section-desc">Кастомные хуки (useChat, useDocuments, useDocumentUpload). SSE через ReadableStream + AbortController. Discriminated union типы. i18n из shared JSON.</div>
+        </div>
+      </div>
+      <div class="section-row">
+        <div style="width:2.2rem; flex-shrink:0"></div>
+        <div class="section-body">
+          <div class="section-label" style="color:#fb923c">Отсутствует</div>
+          <div class="section-desc">Error Boundary. React Query / SWR. Глобальный стейт. Suspense. E2E тесты.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">D. Backend API</div>
+      <div class="section-row">
+        <span class="score score-mid">6</span>
+        <div class="section-body">
+          <div class="section-label">Реализовано</div>
+          <div class="section-desc">Minimal API. SSE с flush. CancellationToken везде. Validation входных данных. OpenAPI. Health checks разделены live / ready.</div>
+        </div>
+      </div>
+      <div class="section-row">
+        <div style="width:2.2rem; flex-shrink:0"></div>
+        <div class="section-body">
+          <div class="section-label" style="color:#fb923c">Отсутствует</div>
+          <div class="section-desc">UseExceptionHandler. Rate limiting. Auth middleware. Ограничение размера файла. Валидация MIME-типа.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">E. AI / LLM</div>
+      <div class="section-row">
+        <span class="score score-high">8</span>
+        <div class="section-body">
+          <div class="section-label">Реализовано</div>
+          <div class="section-desc">RAG pipeline. Два режима grounding. RAG-контекст НЕ пишется в историю (anti-context-pollution). Провайдер-switching (OpenAI / Ollama). Локализованные промпты в JSON-конфиге.</div>
+        </div>
+      </div>
+      <div class="section-row">
+        <div style="width:2.2rem; flex-shrink:0"></div>
+        <div class="section-body">
+          <div class="section-label" style="color:#fb923c">Отсутствует</div>
+          <div class="section-desc">Tool Calling / Function Calling. Structured Output. Retry при timeout. Token counting. Eval framework. Semantic caching.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">F. Базы данных</div>
+      <div class="section-row">
+        <span class="score score-low">4</span>
+        <div class="section-body">
+          <div class="section-label">Реализовано</div>
+          <div class="section-desc">Qdrant — gRPC, фильтрация по scope/sessionId, graceful при отсутствии коллекции. QdrantClient Singleton (thread-safe).</div>
+        </div>
+      </div>
+      <div class="section-row">
+        <div style="width:2.2rem; flex-shrink:0"></div>
+        <div class="section-body">
+          <div class="section-label" style="color:#f87171">⚠️ Критично</div>
+          <div class="section-desc">PostgreSQL и Redis — есть в docker-compose и appsettings, но <strong style="color:#fca5a5">нигде не используются в коде</strong>. Выглядит как незавершённость.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">G. Тестирование</div>
+      <div class="section-row">
+        <span class="score score-mid">5</span>
+        <div class="section-body">
+          <div class="section-label">Реализовано</div>
+          <div class="section-desc">WebApplicationFactory&lt;Program&gt; с подменой зависимостей. FakeChatService / FakeIngestionService. Parity-тест локализаций. TextChunker unit-тесты.</div>
+        </div>
+      </div>
+      <div class="section-row">
+        <div style="width:2.2rem; flex-shrink:0"></div>
+        <div class="section-body">
+          <div class="section-label" style="color:#fb923c">Отсутствует</div>
+          <div class="section-desc">Unit-тесты ChatService (промпт-логика). Unit-тесты RagService. E2E (Playwright). Coverage report. Performance тесты.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">H. DevOps</div>
+      <div class="section-row">
+        <span class="score score-mid">5</span>
+        <div class="section-body">
+          <div class="section-label">Реализовано</div>
+          <div class="section-desc">Multi-stage Dockerfile. Layer caching (csproj → restore → src). docker-compose с volumes. railway.toml. .dockerignore.</div>
+        </div>
+      </div>
+      <div class="section-row">
+        <div style="width:2.2rem; flex-shrink:0"></div>
+        <div class="section-body">
+          <div class="section-label" style="color:#f87171">⚠️ Критично</div>
+          <div class="section-desc">CI/CD полностью отсутствует — нет .github/workflows/. Нет HEALTHCHECK в Dockerfile. Нет non-root user в контейнере.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">I. Monitoring / Observability</div>
+      <div class="section-row">
+        <span class="score score-zero">3</span>
+        <div class="section-body">
+          <div class="section-label">Реализовано</div>
+          <div class="section-desc">ILogger&lt;T&gt; в сервисах. /health (full JSON) и /health/live (liveness). Structured logging в RagService.</div>
+        </div>
+      </div>
+      <div class="section-row">
+        <div style="width:2.2rem; flex-shrink:0"></div>
+        <div class="section-body">
+          <div class="section-label" style="color:#fb923c">Отсутствует</div>
+          <div class="section-desc">OpenTelemetry. Метрики (Prometheus/Grafana). Distributed tracing. Correlation ID. LLM-latency counter. Alerting.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">J. Security</div>
+      <div class="section-row">
+        <span class="score score-zero">3</span>
+        <div class="section-body">
+          <div class="section-label">Реализовано</div>
+          <div class="section-desc">API key в env/конфиге. IsNullOrWhiteSpace проверка на старте. .gitignore для appsettings.Development.json.</div>
+        </div>
+      </div>
+      <div class="section-row">
+        <div style="width:2.2rem; flex-shrink:0"></div>
+        <div class="section-body">
+          <div class="section-label" style="color:#f87171">⚠️ Уязвимости</div>
+          <div class="section-desc">CORS AllowAnyOrigin. Нет аутентификации. DELETE принимает любой sessionId. Shared upload без auth. Prompt injection через PDF. Нет ограничения размера файла. Нет валидации MIME.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">K. Performance</div>
+      <div class="section-row">
+        <span class="score score-low">4</span>
+        <div class="section-body">
+          <div class="section-label">Реализовано</div>
+          <div class="section-desc">QdrantClient Singleton (gRPC канал переиспользуется). SSE flush per token. CancellationToken поддержка.</div>
+        </div>
+      </div>
+      <div class="section-row">
+        <div style="width:2.2rem; flex-shrink:0"></div>
+        <div class="section-body">
+          <div class="section-label" style="color:#fb923c">Узкие места</div>
+          <div class="section-desc">RAG поиск на каждом сообщении (даже «да»). In-memory sessions без eviction. Embeddings без кэша. PDF парсинг синхронный. SSE flush на каждый токен — много syscall'ов.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TOP-10 IMPROVEMENTS -->
+  <h2 class="section">Топ-10 улучшений · максимальный эффект для интервью</h2>
+  <div class="card">
+    <div class="improve-row">
+      <div class="improve-num">1</div>
+      <div class="improve-body">
+        <div class="improve-title">GitHub Actions CI — build + test на каждый PR</div>
+        <div class="improve-meta"><span class="effort-badge effort-s">~2ч</span> Закрывает «CI/CD = 0». <code>.github/workflows/ci.yml</code> — dotnet build + dotnet test.</div>
+      </div>
+    </div>
+    <div class="improve-row">
+      <div class="improve-num fixed-num">2</div>
+      <div class="improve-body">
+        <div class="improve-title fixed-title">✅ FIXED · Scoped bug — сессии вынесены в Singleton ISessionStore</div>
+        <div class="improve-meta"><span class="chip fixed"><span class="dot"></span>fixed</span> Создан <code>ISessionStore</code> в Core, <code>InMemorySessionStore</code> на <code>ConcurrentDictionary</code> зарегистрирован как Singleton. <code>ChatService</code> остаётся Scoped и инжектит store — captive dependency исключён. <code>SessionState</code> переехал в Core как <code>public record</code>. Покрыто 3 unit-тестами. Build clean · 15/15 tests passed.</div>
+      </div>
+    </div>
+    <div class="improve-row">
+      <div class="improve-num">3</div>
+      <div class="improve-body">
+        <div class="improve-title">Подключить Redis для хранения сессий</div>
+        <div class="improve-meta"><span class="effort-badge effort-m">~4ч</span> StackExchange.Redis уже в compose. Заменяет Dictionary, делает сервис cloud-ready и stateless.</div>
+      </div>
+    </div>
+    <div class="improve-row">
+      <div class="improve-num">4</div>
+      <div class="improve-body">
+        <div class="improve-title">OpenTelemetry — трейсинг + метрики</div>
+        <div class="improve-meta"><span class="effort-badge effort-m">~3ч</span> <code>AddOpenTelemetry().WithTracing().WithMetrics()</code>. LLM-latency counter, RAG-latency, token count. Grafana/Jaeger из docker-compose.</div>
+      </div>
+    </div>
+    <div class="improve-row">
+      <div class="improve-num">5</div>
+      <div class="improve-body">
+        <div class="improve-title">Auth — API Key header или JWT middleware</div>
+        <div class="improve-meta"><span class="effort-badge effort-m">~4ч</span> Без identity: просто middleware проверяет <code>X-Api-Key</code> header. Закрывает shared upload и DELETE sessionId уязвимости.</div>
+      </div>
+    </div>
+    <div class="improve-row">
+      <div class="improve-num">6</div>
+      <div class="improve-body">
+        <div class="improve-title">Node.js BFF или отдельный скрипт</div>
+        <div class="improve-meta"><span class="effort-badge effort-m">~3ч</span> Вакансия требует Node.js — у тебя .NET. Любой Node.js код закрывает пробел: webhook handler, data processing script, или тонкий BFF.</div>
+      </div>
+    </div>
+    <div class="improve-row">
+      <div class="improve-num">7</div>
+      <div class="improve-body">
+        <div class="improve-title">EF Core + PostgreSQL — история чатов</div>
+        <div class="improve-meta"><span class="effort-badge effort-l">~5ч</span> PostgreSQL уже в compose. EF Core + миграции + таблица ChatSessions. Закрывает «SQL = 1» и добавляет persistence.</div>
+      </div>
+    </div>
+    <div class="improve-row">
+      <div class="improve-num fixed-num">8</div>
+      <div class="improve-body">
+        <div class="improve-title fixed-title">✅ FIXED · CORS restrict — среда-зависимая политика</div>
+        <div class="improve-meta"><span class="chip fixed"><span class="dot"></span>fixed</span> Production: <code>WithOrigins("https://chat-bot-mu-lake.vercel.app")</code>. Development: <code>localhost:5173/5174</code>. URL берётся из <code>Cors:AllowedOrigins</code> в appsettings — не хардкод. Build clean · 15/15 tests passed.</div>
+      </div>
+    </div>
+    <div class="improve-row">
+      <div class="improve-num">9</div>
+      <div class="improve-body">
+        <div class="improve-title">E2E тест Playwright — хотя бы один</div>
+        <div class="improve-meta"><span class="effort-badge effort-m">~2ч</span> Открыть страницу → выбрать роль → отправить сообщение → проверить что пришёл streaming-ответ. Закрывает E2E gap.</div>
+      </div>
+    </div>
+    <div class="improve-row">
+      <div class="improve-num">10</div>
+      <div class="improve-body">
+        <div class="improve-title">Rate limiting — .NET 7+ built-in</div>
+        <div class="improve-meta"><span class="effort-badge effort-s">~1ч</span> <code>builder.Services.AddRateLimiter()</code> + <code>app.UseRateLimiter()</code>. Fixed window по IP. Production-ready за час.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STRENGTHS / WEAKNESSES -->
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Самые сильные стороны</div>
+      <ul class="sw-list strong">
+        <li>RAG pipeline с Qdrant — сложно и сделано правильно</li>
+        <li>Локализованные промпты в JSON — scalable prompt management</li>
+        <li>TypeScript строгий: discriminated unions, shared types</li>
+        <li>Clean Architecture — Core/Infrastructure/Api</li>
+        <li>SSE streaming правильно (ReadableStream + AbortController)</li>
+        <li>WebApplicationFactory с Fake-зависимостями</li>
+        <li>Multi-stage Dockerfile с layer caching</li>
+        <li>Понимание дорожной карты (M.Extensions.AI комментарии)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Самые слабые стороны</div>
+      <ul class="sw-list weak">
+        <li>Node.js отсутствует полностью — вакансия требует</li>
+        <li>PostgreSQL и Redis в конфиге, не в коде</li>
+        <li>CI/CD = 0 — нет ни одного workflow</li>
+        <li>Monitoring = минимум — только health checks</li>
+        <li>CORS AllowAnyOrigin — production уязвимость</li>
+        <li><s style="color:#4ade80">Scoped + in-memory state = потенциальный архитектурный баг</s> <span class="chip fixed"><span class="dot"></span>fixed</span></li>
+        <li>Нет аутентификации — shared upload открыт всем</li>
+        <li>Prompt injection через PDF не защищён</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- WHAT TO SAY -->
+  <h2 class="section">Что честно рассказывать на интервью</h2>
+  <div class="card">
+    <ul class="tell-list">
+      <li>«Я реализовал RAG pipeline: PDF → text extraction → chunking → embeddings → Qdrant → semantic search. Это позволяет боту отвечать строго по документам, а при их отсутствии — переключаться на общие знания модели.»</li>
+      <li>«Для SSE я не использовал EventSource, потому что нужен POST. Написал ReadableStream reader с TextDecoder вручную — это позволило полностью контролировать буферизацию и AbortController.»</li>
+      <li>«Два режима grounding — мягкий для интервью и жёсткий для document assistant. Разная промпт-логика и разный UX сценарий под один и тот же RAG pipeline.»</li>
+      <li>«Промпты живут в locales/ru.json и locales/en.json — общий источник правды для фронта и бэка. Есть автоматический parity-тест, который не даст добавить ключ в один файл и забыть другой.»</li>
+      <li>«Docker multi-stage build с правильным layer caching: csproj-файлы копируются отдельным слоем до исходников, поэтому при изменении кода без изменения зависимостей restore не перезапускается.»</li>
+      <li>«WebApplicationFactory с подменой зависимостей через интерфейсы — тесты детерминированные, не требуют реального OpenAI ключа и не ходят в сеть.»</li>
+      <li>«Использовал IEmbeddingGenerator из Microsoft.Extensions.AI вместо SK experimental API — это провайдер-агностичный интерфейс, который позволит сменить OpenAI на Ollama без изменения кода.»</li>
+    </ul>
+  </div>
+
+  <!-- QUESTIONS -->
+  <h2 class="section">Вопросы, которые задаст интервьюер</h2>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Вероятные вопросы</div>
+      <div class="qa-list">
+        <div class="qa-item">«Что будет, если перезапустить сервер во время разговора?»</div>
+        <div class="qa-item">«Как ты масштабируешь до 1000 одновременных пользователей?»</div>
+        <div class="qa-item">«Как защищён shared upload от злоупотреблений?»</div>
+        <div class="qa-item">«Покажи CI/CD pipeline»</div>
+        <div class="qa-item">«Почему PostgreSQL в compose, но не в коде?»</div>
+        <div class="qa-item">«Как ты мониторишь LLM-latency в продакшне?»</div>
+        <div class="qa-item">«Какой Node.js код ты писал?»</div>
+        <div class="qa-item">«Как ты управляешь context window при длинном диалоге?»</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Что раскритикует интервьюер</div>
+      <div class="qa-list">
+        <div class="qa-item"><s>«AllowAnyOrigin в продакшне — элементарная ошибка»</s> <span class="chip fixed"><span class="dot"></span>fixed</span></div>
+        <div class="qa-item"><s>«AddScoped + Dictionary в instance — почти всегда баг»</s> <span class="chip fixed"><span class="dot"></span>fixed</span></div>
+        <div class="qa-item danger">«PostgreSQL и Redis в конфиге без использования — padding»</div>
+        <div class="qa-item danger">«Нет CI/CD — в 2025 году это базовое ожидание»</div>
+        <div class="qa-item danger">«Node.js требуется вакансией, у вас .NET»</div>
+        <div class="qa-item danger">«Prompt injection через загружаемый PDF не защищён»</div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

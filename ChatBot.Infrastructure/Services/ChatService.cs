@@ -9,24 +9,20 @@ namespace ChatBot.Infrastructure.Services;
 
 /// <summary>
 /// Реализация стримингового чата через Semantic Kernel.
-/// Поддерживает историю в памяти процесса (без персистентности).
-/// Для продакшна историю нужно хранить в Redis или PostgreSQL.
+///
+/// История сессии хранится во внешнем <see cref="ISessionStore"/> (Singleton),
+/// а сам сервис остаётся Scoped — это валидная связь
+/// (Scoped может зависеть от Singleton, обратное даёт captive dependency).
+///
+/// До рефакторинга история жила в instance-Dictionary, а Scoped lifetime
+/// создавал новый ChatService на каждый запрос — словарь всегда был пустой.
 /// </summary>
 public class ChatService(
     IChatCompletionService chatCompletion,
     IRagService ragService,
-    ILocalizationProvider localization) : IChatService
+    ILocalizationProvider localization,
+    ISessionStore sessions) : IChatService
 {
-    /// <summary>
-    /// Состояние сессии: базовый системный промпт (фиксируется при первом сообщении)
-    /// и хронология user/assistant. RAG-контекст и grounding-правила НЕ сохраняются —
-    /// они инжектятся свежими на каждый запрос, иначе устаревшие чанки засоряли бы контекст.
-    /// </summary>
-    private sealed record SessionState(string BaseSystemPrompt, List<(AuthorRole Role, string Content)> History);
-
-    // Хранилище сессий в памяти — заменить на распределённый кэш в prod
-    private readonly Dictionary<Guid, SessionState> _sessions = [];
-
     /*
      * ────────────────────────────────────────────────────────────────────────────
      *  БУДУЩЕЕ: версия на Microsoft.Extensions.AI (IChatClient).
@@ -34,52 +30,8 @@ public class ChatService(
      *  1. Вместо ChatHistory (SK-специфичный класс) — List<ChatMessage> из M.E.AI
      *  2. Вместо AddSystemMessage/AddUserMessage — конструктор ChatMessage(role, text)
      *  3. Вместо GetStreamingChatMessageContentsAsync — GetStreamingResponseAsync
-     *
-     *  Закомментированная сигнатура (для рефактора на этапе 6+):
-     *
-     *  using Microsoft.Extensions.AI;
-     *
-     *  public class ChatService(IChatClient chatClient, IRagService ragService) : IChatService
-     *  {
-     *      // Тип сменился: ChatHistory → List<ChatMessage> (провайдер-агностичный)
-     *      private readonly Dictionary<Guid, List<ChatMessage>> _sessions = [];
-     *
-     *      public async IAsyncEnumerable<string> StreamAsync(
-     *          ChatRequest request,
-     *          [EnumeratorCancellation] CancellationToken ct = default)
-     *      {
-     *          var history = GetOrCreateHistory(...);   // теперь List<ChatMessage>
-     *
-     *          // Добавление сообщений — через конструктор record-а ChatMessage
-     *          // .NET: эквивалент new HttpRequestMessage(method, uri)
-     *          history.Add(new ChatMessage(ChatRole.System, contextText));
-     *          history.Add(new ChatMessage(ChatRole.User, request.Message));
-     *
-     *          var sb = new StringBuilder();
-     *
-     *          // GetStreamingResponseAsync вместо SK-шного GetStreamingChatMessageContentsAsync
-     *          // Возвращает IAsyncEnumerable<ChatResponseUpdate> — каждый update это дельта.
-     *          await foreach (var update in chatClient.GetStreamingResponseAsync(history, cancellationToken: ct))
-     *          {
-     *              // update.Text — текстовая дельта (раньше chunk.Content в SK)
-     *              // update также содержит FunctionCalls, FinishReason и др. метаданные
-     *              var token = update.Text ?? string.Empty;
-     *              if (!string.IsNullOrEmpty(token))
-     *              {
-     *                  sb.Append(token);
-     *                  yield return token;
-     *              }
-     *          }
-     *
-     *          // Финальное сообщение — assistant role
-     *          history.Add(new ChatMessage(ChatRole.Assistant, sb.ToString()));
-     *      }
-     *  }
-     *
-     *  Бонус: для function calling (когда понадобится — этап 7+) код почти не меняется,
-     *  потому что .UseFunctionInvocation() в Program.cs делает всё прозрачно — IChatClient
-     *  сам распарсит tool_calls из ответа, вызовет твою C# функцию и подставит результат.
-     *  В SK для этого нужны KernelPlugin/KernelFunction с атрибутами.
+     *  4. Для function calling (этап 7+) — .UseFunctionInvocation() в Program.cs,
+     *     IChatClient сам распарсит tool_calls и вызовет C# функцию.
      * ────────────────────────────────────────────────────────────────────────────
      */
 
@@ -94,13 +46,13 @@ public class ChatService(
             ? (string.IsNullOrEmpty(request.Role) ? "assistant" : "interview")
             : request.Mode;
 
-        var session = GetOrCreateSession(sessionId, mode, request.Role, request.ResumeContext, request.Language);
+        var session = await GetOrCreateSessionAsync(sessionId, mode, request.Role, request.ResumeContext, request.Language, cancellationToken);
 
         // Ищем релевантные чанки: shared + приватные именно этой сессии
         var chunks = await ragService.SearchAsync(request.Message, sessionId.ToString(), topK: 5, ct: cancellationToken);
 
         // Собираем промпт СВЕЖИМ на каждый запрос: base system + grounding + RAG → пары user/assistant → новое сообщение.
-        // Старые RAG-контексты не утекают в следующие запросы, потому что не записываются в _sessions.
+        // Старые RAG-контексты не утекают в следующие запросы, потому что не записываются в SessionState.History.
         var locale = localization.Get(request.Language);
         var prompt = new ChatHistory(session.BaseSystemPrompt);
         if (chunks.Count > 0)
@@ -109,8 +61,11 @@ public class ChatService(
             var context = string.Join("\n\n", chunks.Select(c => $"[{c.DocumentName} стр.{c.PageNumber}]\n{c.Text}"));
             prompt.AddSystemMessage($"{grounding}\n\n{locale.ContextHeader}\n{context}");
         }
-        foreach (var (role, content) in session.History)
-            prompt.AddMessage(role, content);
+
+        // Маппинг строковой роли → AuthorRole SK. Делаем здесь, а не в Core,
+        // чтобы не тащить SK-зависимость в ChatBot.Core.
+        foreach (var msg in session.History)
+            prompt.AddMessage(MapRole(msg.Role), msg.Content);
         prompt.AddUserMessage(request.Message);
 
         var sb = new System.Text.StringBuilder();
@@ -126,20 +81,36 @@ public class ChatService(
         }
 
         // Сохраняем в долговременную историю ТОЛЬКО user/assistant — без RAG-системников.
-        session.History.Add((AuthorRole.User, request.Message));
-        session.History.Add((AuthorRole.Assistant, sb.ToString()));
+        // List мутируется in-place (record-ом не replace-имся), но явная SetAsync на случай
+        // будущего RedisSessionStore — там потребуется повторная сериализация.
+        session.History.Add(new SessionMessage("user", request.Message));
+        session.History.Add(new SessionMessage("assistant", sb.ToString()));
+        await sessions.SetAsync(sessionId, session, cancellationToken);
     }
 
-    private SessionState GetOrCreateSession(Guid sessionId, string mode, string? role, string? resumeContext, string? language)
+    private async ValueTask<SessionState> GetOrCreateSessionAsync(
+        Guid sessionId, string mode, string? role, string? resumeContext, string? language, CancellationToken ct)
     {
-        if (!_sessions.TryGetValue(sessionId, out var state))
-        {
-            var basePrompt = BuildSystemPrompt(mode, role, resumeContext, language);
-            state = new SessionState(basePrompt, []);
-            _sessions[sessionId] = state;
-        }
-        return state;
+        var existing = await sessions.GetAsync(sessionId, ct);
+        if (existing is not null)
+            return existing;
+
+        var basePrompt = BuildSystemPrompt(mode, role, resumeContext, language);
+        var fresh = new SessionState(basePrompt, []);
+        await sessions.SetAsync(sessionId, fresh, ct);
+        return fresh;
     }
+
+    /// <summary>
+    /// Маппинг строковой роли (Core-слой) в SK-шный AuthorRole.
+    /// </summary>
+    private static AuthorRole MapRole(string role) => role switch
+    {
+        "user" => AuthorRole.User,
+        "assistant" => AuthorRole.Assistant,
+        "system" => AuthorRole.System,
+        _ => AuthorRole.User,
+    };
 
     /// <summary>
     /// Строит базовый системный промпт сессии из загруженной локали.
@@ -166,5 +137,4 @@ public class ChatService(
         prompt += locale.InterviewStartCue;
         return prompt;
     }
-
 }

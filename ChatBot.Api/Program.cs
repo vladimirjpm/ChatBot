@@ -15,8 +15,18 @@ var builder = WebApplication.CreateBuilder(args);
 // .NET: builder.Services.AddOpenApi()
 builder.Services.AddOpenApi();
 
+// CORS: в Production разрешаем только домен фронта (Vercel), в Development — localhost Vite.
+// Список берётся из Cors:AllowedOrigins в appsettings — переопределяется через appsettings.{env}.json.
+// .NET: аналог app.UseCors(policy => policy.WithOrigins(...)) в старом ASP.NET.
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? [];
+
 builder.Services.AddCors(opt =>
-    opt.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+    opt.AddDefaultPolicy(p => p
+        .WithOrigins(allowedOrigins)
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
 
 // Регистрация Semantic Kernel с поддержкой OpenAI и Ollama
 // .NET: аналог — builder.Services.AddSingleton + HttpClient + IOptions<LlmOptions>
@@ -126,6 +136,11 @@ builder.Services.AddSingleton<ILocalizationProvider>(sp => new JsonLocalizationP
 
 builder.Services.AddScoped<IRagService, RagService>();
 builder.Services.AddScoped<IIngestionService, IngestionService>();
+
+// Хранилище диалоговых сессий — Singleton, чтобы история переживала HTTP-запросы.
+// ChatService остаётся Scoped (зависит от Scoped IRagService) — Scoped → Singleton ОК.
+// .NET: эквивалент builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>().
+builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>();
 builder.Services.AddScoped<IChatService, ChatService>();
 
 // Health checks — для Railway / K8s liveness/readiness проб.

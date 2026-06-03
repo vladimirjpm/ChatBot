@@ -10,7 +10,11 @@
       "Bash(find C:/Users/Vladimir.Barentsev/.nuget/packages/qdrant.client/1.18.1/lib -name \"*.xml\" 2>/dev/null | head -3)",
       "Bash(find C:/Users/Vladimir.Barentsev/.nuget/packages/microsoft.semantickernel.connectors.openai -name \"*.xml\" 2>/dev/null | head -2)",
       "Bash(npx tsc *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(Get-ChildItem -Recurse C:\\\\_Proj\\\\ChatBot\\\\ChatBot.Infrastructure)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(Get-ChildItem -Recurse \"C:\\\\_Proj\\\\ChatBot\\\\ChatBot.Infrastructure\" | Where-Object { -not $_.PSIsContainer } | Select-Object FullName)",
+      "Bash(git -C C:/_Proj/ChatBot log --oneline --since=\"2026-06-03 00:00\")"
     ]
   }
 }

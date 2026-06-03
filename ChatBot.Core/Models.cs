@@ -54,3 +54,27 @@ public record IngestionResult(int ChunksIndexed, string DocumentName);
 /// Scope: "shared" (виден всем) или "private" (только в своей сессии).
 /// </summary>
 public record DocumentInfo(string Name, string Scope, int Chunks);
+
+/// <summary>
+/// Одно сообщение в истории сессии для LLM.
+///
+/// Role — строковая ("user" / "assistant" / "system"), чтобы Core-слой не
+/// зависел от Semantic Kernel (AuthorRole живёт в SK). Маппинг в AuthorRole
+/// делается в ChatService при сборке ChatHistory.
+/// </summary>
+public record SessionMessage(string Role, string Content);
+
+/// <summary>
+/// Состояние диалоговой сессии: фиксированный системный промпт
+/// (строится при первом сообщении из режима / роли / резюме / языка)
+/// и хронология user/assistant пар.
+///
+/// RAG-контекст в History НЕ записывается — он инжектится свежим на каждый
+/// запрос, иначе устаревшие чанки засоряли бы контекст.
+///
+/// Используется ISessionStore (Singleton) для хранения между HTTP-запросами.
+/// History — мутируемый List, поэтому при двух конкурентных запросах в одну
+/// сессию возможна гонка (TODO: per-session lock). На практике фронт блокирует
+/// ввод при streaming (см. useChat.ts isStreaming), поэтому реальный риск низкий.
+/// </summary>
+public record SessionState(string BaseSystemPrompt, List<SessionMessage> History);
