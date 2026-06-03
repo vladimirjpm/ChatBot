@@ -20,7 +20,7 @@ namespace ChatBot.Infrastructure.Services;
 public class ChatService(
     IChatCompletionService chatCompletion,
     IRagService ragService,
-    ILocalizationProvider localization,
+    IPromptProvider promptProvider,
     ISessionStore sessions) : IChatService
 {
     /*
@@ -53,13 +53,13 @@ public class ChatService(
 
         // Rebuild the prompt fresh on every request: base system + grounding + RAG → user/assistant pairs → new message.
         // Stale RAG contexts don't leak into subsequent requests because they are never written to SessionState.History.
-        var locale = localization.Get(request.Language);
+        var prompts = promptProvider.Get(request.Language);
         var prompt = new ChatHistory(session.BaseSystemPrompt);
         if (chunks.Count > 0)
         {
-            var grounding = mode == "assistant" ? locale.GroundingHard : locale.GroundingSoft;
+            var grounding = mode == "assistant" ? prompts.GroundingHard : prompts.GroundingSoft;
             var context = string.Join("\n\n", chunks.Select(c => $"[{c.DocumentName} p.{c.PageNumber}]\n{c.Text}"));
-            prompt.AddSystemMessage($"{grounding}\n\n{locale.ContextHeader}\n{context}");
+            prompt.AddSystemMessage($"{grounding}\n\n{prompts.ContextHeader}\n{context}");
         }
 
         // Map string role → SK AuthorRole here, not in Core,
@@ -116,23 +116,23 @@ public class ChatService(
     /// </summary>
     private string BuildSystemPrompt(string mode, string? role, string? resumeContext, string? language)
     {
-        var locale = localization.Get(language);
+        var prompts = promptProvider.Get(language);
 
         if (mode == "assistant")
-            return locale.AssistantBase;
+            return prompts.AssistantBase;
 
         if (string.IsNullOrWhiteSpace(role))
-            return locale.GenericAssistant;
+            return prompts.GenericAssistant;
 
-        var roleName = locale.RoleNames.GetValueOrDefault(role.ToLowerInvariant())
-            ?? role + locale.UnknownRoleSuffix;
+        var roleName = prompts.RoleNames.GetValueOrDefault(role.ToLowerInvariant())
+            ?? role + prompts.UnknownRoleSuffix;
 
-        var prompt = Locale.Format(locale.InterviewRules, new Dictionary<string, string> { ["roleName"] = roleName });
+        var prompt = Locale.Format(prompts.InterviewRules, new Dictionary<string, string> { ["roleName"] = roleName });
 
         if (!string.IsNullOrWhiteSpace(resumeContext))
-            prompt += Locale.Format(locale.InterviewResumeAddendum, new Dictionary<string, string> { ["resume"] = resumeContext });
+            prompt += Locale.Format(prompts.InterviewResumeAddendum, new Dictionary<string, string> { ["resume"] = resumeContext });
 
-        prompt += locale.InterviewStartCue;
+        prompt += prompts.InterviewStartCue;
         return prompt;
     }
 }

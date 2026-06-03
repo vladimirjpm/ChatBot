@@ -134,6 +134,11 @@ builder.Services.AddSingleton<ILocalizationProvider>(sp => new JsonLocalizationP
     defaultLanguage: builder.Configuration["Localization:DefaultLanguage"] ?? "ru",
     logger: sp.GetRequiredService<ILoggerFactory>().CreateLogger<JsonLocalizationProvider>()));
 
+builder.Services.AddSingleton<IPromptProvider>(sp => new JsonPromptProvider(
+    promptsDirectory: Path.Combine(AppContext.BaseDirectory, "prompts"),
+    defaultLanguage: builder.Configuration["Localization:DefaultLanguage"] ?? "ru",
+    logger: sp.GetRequiredService<ILoggerFactory>().CreateLogger<JsonPromptProvider>()));
+
 builder.Services.AddScoped<IRagService, RagService>();
 builder.Services.AddScoped<IIngestionService, IngestionService>();
 

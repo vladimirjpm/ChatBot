@@ -18,11 +18,15 @@
     <ProjectReference Include="..\ChatBot.Infrastructure\ChatBot.Infrastructure.csproj" />
   </ItemGroup>
 
-  <!-- Локали лежат в корне репо и копируются в bin/.../locales при сборке.
+  <!-- Локали и промпты лежат в корне репо и копируются в bin/... при сборке.
        PreserveNewest вместо Always — не перекидываем при каждом билде, только при изменении. -->
   <ItemGroup>
     <Content Include="..\locales\*.json"
              Link="locales\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\prompts\*.json"
+             Link="prompts\%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest"
              CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
