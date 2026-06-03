@@ -69,6 +69,12 @@
     .qa-item { background: #0f172a; border: 1px solid #1e3a5f; border-radius: 8px;
       padding: 0.65rem 1rem; font-size: 0.85rem; color: #93c5fd; line-height: 1.5; }
     .qa-item.danger { border-color: #7f1d1d; color: #fca5a5; }
+    details.qa-item { cursor: pointer; }
+    details.qa-item summary { list-style: none; display: flex; align-items: flex-start; gap: 0.5rem; }
+    details.qa-item summary::before { content: '▶'; font-size: 0.65rem; margin-top: 0.25rem; flex-shrink: 0; transition: transform 0.15s; color: #475569; }
+    details.qa-item[open] summary::before { transform: rotate(90deg); }
+    details.qa-item summary::-webkit-details-marker { display: none; }
+    .qa-answer { margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid #1e3a5f; font-size: 0.82rem; color: #94a3b8; line-height: 1.6; }
 
     .verdict { background: linear-gradient(135deg, #0c1a3a, #1e293b); border: 1px solid #1e40af;
       border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
@@ -568,13 +574,34 @@
     <div class="card">
       <div class="card-title">Likely questions</div>
       <div class="qa-list">
-        <div class="qa-item">"What happens if the server restarts mid-conversation?"</div>
-        <div class="qa-item">"How do you scale to 1000 concurrent users?"</div>
-        <div class="qa-item">"How is shared upload protected from abuse?"</div>
-        <div class="qa-item">"Show me your CI/CD pipeline"</div>
-        <div class="qa-item">"Why is PostgreSQL in compose but not in code?"</div>
-        <div class="qa-item">"How do you monitor LLM latency in production?"</div>
-        <div class="qa-item">"How do you manage the context window in long conversations?"</div>
+        <details class="qa-item">
+          <summary>"What happens if the server restarts mid-conversation?"</summary>
+          <div class="qa-answer">Sessions are stored in-memory (InMemorySessionStore). On restart all history is lost — the user starts fresh. The fix is Redis: replace InMemorySessionStore with a Redis-backed implementation. The interface ISessionStore is already in place, so it's a swap without touching ChatService.</div>
+        </details>
+        <details class="qa-item">
+          <summary>"How do you scale to 1000 concurrent users?"</summary>
+          <div class="qa-answer">Currently in-memory sessions prevent multi-instance scaling — all requests must hit the same pod. With Redis sessions I can run N replicas behind a load balancer. Qdrant and OpenAI are already external services. SSE streams are stateless per-request, so horizontal scaling works once sessions are externalised.</div>
+        </details>
+        <details class="qa-item">
+          <summary>"How is shared upload protected from abuse?"</summary>
+          <div class="qa-answer">Right now it isn't — anyone can POST to /api/documents/upload with scope=shared and pollute the knowledge base. The fix is an auth middleware checking an X-Api-Key header before the endpoint is reached. That's improvement #5 in the list.</div>
+        </details>
+        <details class="qa-item">
+          <summary>"Show me your CI/CD pipeline"</summary>
+          <div class="qa-answer">CI: GitHub Actions runs dotnet restore → build → test on every push and PR to main (.github/workflows/ci.yml). CD: Railway auto-deploys the backend from main on green build; Vercel auto-deploys the frontend. So a broken test blocks the developer before merge but doesn't block Railway — that's the next step to wire up.</div>
+        </details>
+        <details class="qa-item">
+          <summary>"Why is PostgreSQL in compose but not in code?"</summary>
+          <div class="qa-answer">It was scaffolded as infrastructure for future chat history persistence (EF Core + migrations). Currently sessions are in-memory and there's no need to persist them yet. PostgreSQL is the planned store for ChatSessions — that's improvement #7. Redis is planned for session state (#3).</div>
+        </details>
+        <details class="qa-item">
+          <summary>"How do you monitor LLM latency in production?"</summary>
+          <div class="qa-answer">Currently only /health and /health/live endpoints exist — no metrics. The plan is OpenTelemetry: AddOpenTelemetry().WithTracing().WithMetrics(), add an LLM-latency histogram around the SK chat call, export to Prometheus/Grafana. That's improvement #4.</div>
+        </details>
+        <details class="qa-item">
+          <summary>"How do you manage the context window in long conversations?"</summary>
+          <div class="qa-answer">Semantic Kernel's ChatHistory holds all messages in memory for the session lifetime. For very long conversations this will eventually hit the model's context limit. The mitigation is a sliding window or summarisation strategy — keep the last N messages and prepend a rolling summary. Not implemented yet; current demo sessions are short enough that it doesn't matter in practice.</div>
+        </details>
       </div>
     </div>
     <div class="card">

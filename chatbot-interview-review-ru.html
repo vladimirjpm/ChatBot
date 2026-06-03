@@ -76,6 +76,12 @@
     .qa-item { background: #0f172a; border: 1px solid #1e3a5f; border-radius: 8px;
       padding: 0.65rem 1rem; font-size: 0.85rem; color: #93c5fd; line-height: 1.5; }
     .qa-item.danger { border-color: #7f1d1d; color: #fca5a5; }
+    details.qa-item { cursor: pointer; }
+    details.qa-item summary { list-style: none; display: flex; align-items: flex-start; gap: 0.5rem; }
+    details.qa-item summary::before { content: '▶'; font-size: 0.65rem; margin-top: 0.25rem; flex-shrink: 0; transition: transform 0.15s; color: #475569; }
+    details.qa-item[open] summary::before { transform: rotate(90deg); }
+    details.qa-item summary::-webkit-details-marker { display: none; }
+    .qa-answer { margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid #1e3a5f; font-size: 0.82rem; color: #94a3b8; line-height: 1.6; }
 
     /* Verdict */
     .verdict { background: linear-gradient(135deg, #0c1a3a, #1e293b); border: 1px solid #1e40af;
@@ -576,13 +582,34 @@
     <div class="card">
       <div class="card-title">Вероятные вопросы</div>
       <div class="qa-list">
-        <div class="qa-item">«Что будет, если перезапустить сервер во время разговора?»</div>
-        <div class="qa-item">«Как ты масштабируешь до 1000 одновременных пользователей?»</div>
-        <div class="qa-item">«Как защищён shared upload от злоупотреблений?»</div>
-        <div class="qa-item">«Покажи CI/CD pipeline»</div>
-        <div class="qa-item">«Почему PostgreSQL в compose, но не в коде?»</div>
-        <div class="qa-item">«Как ты мониторишь LLM-latency в продакшне?»</div>
-        <div class="qa-item">«Как ты управляешь context window при длинном диалоге?»</div>
+        <details class="qa-item">
+          <summary>«Что будет, если перезапустить сервер во время разговора?»</summary>
+          <div class="qa-answer">Сессии хранятся в памяти (InMemorySessionStore). При перезапуске вся история теряется — пользователь начинает заново. Фикс — Redis: заменить InMemorySessionStore на Redis-реализацию. Интерфейс ISessionStore уже есть в Core, ChatService его не знает — это swap без изменения логики.</div>
+        </details>
+        <details class="qa-item">
+          <summary>«Как ты масштабируешь до 1000 одновременных пользователей?»</summary>
+          <div class="qa-answer">Сейчас in-memory сессии не дают запустить несколько инстансов — все запросы должны попадать в один pod. С Redis сессиями можно поднять N реплик за load balancer. Qdrant и OpenAI — уже внешние сервисы. SSE-стримы stateless на уровне запроса, горизонтальное масштабирование работает сразу после выноса сессий.</div>
+        </details>
+        <details class="qa-item">
+          <summary>«Как защищён shared upload от злоупотреблений?»</summary>
+          <div class="qa-answer">Никак — сейчас любой может сделать POST на /api/documents/upload с scope=shared и засорить общую базу знаний. Фикс — auth middleware, проверяющий X-Api-Key header перед эндпоинтом. Это пункт 5 из топ-10 улучшений.</div>
+        </details>
+        <details class="qa-item">
+          <summary>«Покажи CI/CD pipeline»</summary>
+          <div class="qa-answer">CI: GitHub Actions запускает dotnet restore → build → test на каждый push и PR в main (.github/workflows/ci.yml). CD: Railway автодеплоит бэкенд из main, Vercel — фронтенд. Сломанный тест блокирует разработчика до мержа, но не блокирует Railway — это следующий шаг.</div>
+        </details>
+        <details class="qa-item">
+          <summary>«Почему PostgreSQL в compose, но не в коде?»</summary>
+          <div class="qa-answer">Заскаффолдён как инфраструктура для будущего хранения истории чатов (EF Core + миграции). Сейчас сессии in-memory и персистить их не нужно. PostgreSQL — плановое хранилище для ChatSessions, это улучшение №7. Redis — для session state, улучшение №3.</div>
+        </details>
+        <details class="qa-item">
+          <summary>«Как ты мониторишь LLM-latency в продакшне?»</summary>
+          <div class="qa-answer">Сейчас только /health и /health/live — метрик нет. План: OpenTelemetry — AddOpenTelemetry().WithTracing().WithMetrics(), histogram вокруг SK chat-вызова, экспорт в Prometheus/Grafana. Это улучшение №4.</div>
+        </details>
+        <details class="qa-item">
+          <summary>«Как ты управляешь context window при длинном диалоге?»</summary>
+          <div class="qa-answer">Semantic Kernel держит всю ChatHistory в памяти на время сессии. При очень длинных разговорах упрёмся в лимит контекста модели. Митигация — sliding window или суммаризация: хранить последние N сообщений и добавлять rolling summary. Не реализовано — текущие демо-сессии достаточно короткие.</div>
+        </details>
       </div>
     </div>
     <div class="card">

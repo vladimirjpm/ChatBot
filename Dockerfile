@@ -18,6 +18,8 @@ RUN dotnet restore ChatBot.Api/ChatBot.Api.csproj
 COPY ChatBot.Api/ ChatBot.Api/
 COPY ChatBot.Core/ ChatBot.Core/
 COPY ChatBot.Infrastructure/ ChatBot.Infrastructure/
+# Локали нужны в рантайме — кладём рядом с publish-артефактами
+COPY locales/ locales/
 
 RUN dotnet publish ChatBot.Api/ChatBot.Api.csproj \
     -c Release \
@@ -30,6 +32,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 COPY --from=build /app/publish ./
+# Локали лежат в корне src, а не в publish — копируем явно
+COPY --from=build /src/locales ./locales/
 
 # Railway инжектирует $PORT динамически — Kestrel должен слушать его на 0.0.0.0.
 # .NET: эквивалент app.Urls.Add($"http://*:{port}") в Program.cs.
