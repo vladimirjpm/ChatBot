@@ -243,8 +243,30 @@ app.MapPost("/api/documents/upload", async (
 .DisableAntiforgery();
 
 // Список доступных в данной сессии документов (shared + свои private).
-app.MapGet("/api/documents", async (string? sessionId, IIngestionService svc, CancellationToken ct) =>
-    Results.Ok(await svc.ListAsync(sessionId, ct)))
+app.MapGet("/api/documents", async (
+    string? sessionId,
+    IIngestionService svc,
+    ILoggerFactory loggerFactory,
+    CancellationToken ct) =>
+{
+    var log = loggerFactory.CreateLogger("DocumentList");
+    try
+    {
+        var docs = await svc.ListAsync(sessionId, ct);
+        log.LogInformation("ListAsync OK: sessionId={Sid}, count={Count}", sessionId, docs.Count);
+        return Results.Ok(docs);
+    }
+    catch (Exception ex)
+    {
+        // .NET: вместо дефолтного 500 с пустым телом — возвращаем ProblemDetails с типом исключения,
+        // чтобы видеть причину прямо в DevTools без захода в Railway-логи.
+        log.LogError(ex, "ListAsync FAILED: sessionId={Sid}", sessionId);
+        return Results.Problem(
+            title: "Documents list failed",
+            detail: $"{ex.GetType().Name}: {ex.Message}",
+            statusCode: 500);
+    }
+})
 .WithName("DocumentList")
 .WithTags("Documents");
 

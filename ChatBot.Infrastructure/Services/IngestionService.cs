@@ -69,17 +69,42 @@ public class IngestionService(
 
     public async Task<IReadOnlyList<DocumentInfo>> ListAsync(string? sessionId, CancellationToken ct = default)
     {
-        if (!await qdrant.CollectionExistsAsync(CollectionName, ct))
+        logger.LogInformation("ListAsync start: sessionId={Sid}", sessionId);
+
+        bool exists;
+        try
+        {
+            exists = await qdrant.CollectionExistsAsync(CollectionName, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "CollectionExistsAsync failed for {Coll}", CollectionName);
+            throw;
+        }
+        if (!exists)
+        {
+            logger.LogWarning("Коллекция {Coll} не существует — возвращаю пустой список", CollectionName);
             return [];
+        }
 
         // Scroll достаёт все доступные точки с payload, без векторов (экономим трафик).
         // .NET: эквивалент IAsyncEnumerable + пагинации, но для демо-объёмов хватит одного батча.
-        var response = await qdrant.ScrollAsync(
-            CollectionName,
-            filter: QdrantFilters.ForSession(sessionId),
-            limit: 10_000,
-            vectorsSelector: new WithVectorsSelector { Enable = false },
-            cancellationToken: ct);
+        Qdrant.Client.Grpc.ScrollResponse response;
+        try
+        {
+            response = await qdrant.ScrollAsync(
+                CollectionName,
+                filter: QdrantFilters.ForSession(sessionId),
+                limit: 10_000,
+                vectorsSelector: new WithVectorsSelector { Enable = false },
+                cancellationToken: ct);
+            logger.LogInformation("ScrollAsync OK: returned {N} точек", response.Result.Count);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ScrollAsync failed: sessionId={Sid}", sessionId);
+            throw;
+        }
 
         // Группируем чанки по (documentName, scope) — каждая пара это один документ для UI.
         return response.Result
@@ -116,15 +141,41 @@ public class IngestionService(
         return (int)countResp;
     }
 
+    // Поля payload, по которым строятся фильтры (Ingestion/Rag/листинг/удаление).
+    // Qdrant Cloud работает в strict-режиме: фильтр по неиндексированному полю → InvalidArgument.
+    // .NET: концептуально похоже на CREATE INDEX в EF Core миграциях.
+    private static readonly string[] IndexedKeywordFields = ["scope", "sessionId", "documentName"];
+
     private async Task EnsureCollectionAsync(CancellationToken ct)
     {
-        if (await qdrant.CollectionExistsAsync(CollectionName, ct)) return;
+        var existed = await qdrant.CollectionExistsAsync(CollectionName, ct);
+        if (!existed)
+        {
+            await qdrant.CreateCollectionAsync(
+                CollectionName,
+                new VectorParams { Size = VectorSize, Distance = Distance.Cosine },
+                cancellationToken: ct);
+            logger.LogInformation("Создана Qdrant-коллекция {Name} (dim={Dim}, cosine)", CollectionName, VectorSize);
+        }
 
-        await qdrant.CreateCollectionAsync(
-            CollectionName,
-            new VectorParams { Size = VectorSize, Distance = Distance.Cosine },
-            cancellationToken: ct);
-
-        logger.LogInformation("Создана Qdrant-коллекция {Name} (dim={Dim}, cosine)", CollectionName, VectorSize);
+        // Индексы создаём всегда — это idempotent для коллекций, созданных до фикса.
+        // CreatePayloadIndexAsync безопасно повторно вызывать: если индекс уже есть, Qdrant вернёт ok.
+        foreach (var field in IndexedKeywordFields)
+        {
+            try
+            {
+                await qdrant.CreatePayloadIndexAsync(
+                    CollectionName,
+                    field,
+                    schemaType: PayloadSchemaType.Keyword,
+                    cancellationToken: ct);
+                logger.LogInformation("Payload-индекс {Field} (keyword) на коллекции {Coll} готов", field, CollectionName);
+            }
+            catch (Exception ex)
+            {
+                // Не валим ingest из-за индекса — логируем и идём дальше. Filter упадёт позже, если индекс реально не создан.
+                logger.LogWarning(ex, "Не удалось создать payload-индекс {Field}", field);
+            }
+        }
     }
 }
