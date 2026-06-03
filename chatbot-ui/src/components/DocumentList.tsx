@@ -11,9 +11,9 @@ interface Props {
 }
 
 /**
- * Список загруженных документов с бейджами scope.
- * 🔒 private — есть кнопка удаления (×).
- * 🌐 shared — удаление через UI запрещено (защита общей базы знаний).
+ * Uploaded document list with scope badges.
+ * 🔒 private — delete button (×) is shown.
+ * 🌐 shared — deletion via UI is disabled (protects the shared knowledge base).
  */
 export function DocumentList({ docs, loading, onDelete, emptyText, lang = 'ru' }: Props) {
   const s = t(lang)

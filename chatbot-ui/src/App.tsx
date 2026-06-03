@@ -26,11 +26,11 @@ export default function App() {
     setActiveLang(language)
     setActiveMode(mode)
     if (mode === 'interview') {
-      // Бот сам начинает с приветствия и первого вопроса
-      const startMsg = language === 'en' ? "Let's begin" : 'Начнём'
+      // The bot starts with a greeting and the first question.
+      const startMsg = language === 'en' ? "Let's begin" : "Let's begin"
       sendMessage(startMsg, role, resumeContext, language, mode)
     }
-    // В режиме assistant ждём первого вопроса от пользователя — не шлём сообщение сами
+    // In assistant mode we wait for the first user question — we don't send a message ourselves.
   }
 
   const handleReset = () => {
@@ -40,7 +40,7 @@ export default function App() {
     setDocsOpen(false)
   }
 
-  // В чат-режим переходим если выбран interview (с ролью) ИЛИ assistant (без роли)
+  // Enter chat mode when interview (with a role) OR assistant (without a role) is selected.
   const inChat = activeMode !== null
   const s = t(activeLang)
 
@@ -61,7 +61,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Аккордеон документов — компактная кнопка справа */}
+            {/* Documents accordion — compact button on the right */}
             <button
               onClick={() => setDocsOpen(o => !o)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-300 hover:bg-slate-800 transition-colors"

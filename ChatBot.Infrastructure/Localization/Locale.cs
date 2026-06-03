@@ -1,10 +1,10 @@
 namespace ChatBot.Infrastructure.Localization;
 
 /// <summary>
-/// Десериализованная локаль из JSON-файла. POCO для удобного маппинга через System.Text.Json.
+/// Deserialized locale from a JSON file. POCO for easy mapping via System.Text.Json.
 ///
-/// Шаблонные строки содержат плейсхолдеры в фигурных скобках: <c>{roleName}</c>, <c>{resume}</c>.
-/// Подстановка через <see cref="Format"/>.
+/// Template strings contain curly-brace placeholders: <c>{roleName}</c>, <c>{resume}</c>.
+/// Substitution is done via <see cref="Format"/>.
 /// </summary>
 public sealed class Locale
 {
@@ -20,14 +20,14 @@ public sealed class Locale
     public string UnknownRoleSuffix { get; init; } = "";
 
     /// <summary>
-    /// UI-строки (фронтенд). Не используются в backend — храним как сырой JsonElement,
-    /// чтобы не повторять схему в C#. Фронт сам разбирает.
+    /// UI strings (frontend). Not used in the backend — stored as raw JsonElement
+    /// to avoid duplicating the schema in C#. The frontend parses it directly.
     /// </summary>
     public System.Text.Json.JsonElement? Ui { get; init; }
 
     /// <summary>
-    /// Подставляет значения плейсхолдеров формата <c>{key}</c> в шаблонной строке.
-    /// .NET: аналог string.Format, но с именованными плейсхолдерами вместо позиционных.
+    /// Substitutes placeholder values of the form <c>{key}</c> in a template string.
+    /// .NET: like string.Format but with named placeholders instead of positional ones.
     /// </summary>
     public static string Format(string template, IReadOnlyDictionary<string, string> args)
     {

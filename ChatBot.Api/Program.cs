@@ -15,9 +15,9 @@ var builder = WebApplication.CreateBuilder(args);
 // .NET: builder.Services.AddOpenApi()
 builder.Services.AddOpenApi();
 
-// CORS: в Production разрешаем только домен фронта (Vercel), в Development — localhost Vite.
-// Список берётся из Cors:AllowedOrigins в appsettings — переопределяется через appsettings.{env}.json.
-// .NET: аналог app.UseCors(policy => policy.WithOrigins(...)) в старом ASP.NET.
+// CORS: in Production allow only the frontend domain (Vercel), in Development — Vite localhost.
+// Origins are read from Cors:AllowedOrigins in appsettings, overridden via appsettings.{env}.json.
+// .NET: equivalent of app.UseCors(policy => policy.WithOrigins(...)) in classic ASP.NET.
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
     .Get<string[]>() ?? [];
@@ -28,14 +28,14 @@ builder.Services.AddCors(opt =>
         .AllowAnyHeader()
         .AllowAnyMethod()));
 
-// Регистрация Semantic Kernel с поддержкой OpenAI и Ollama
-// .NET: аналог — builder.Services.AddSingleton + HttpClient + IOptions<LlmOptions>
+// Register Semantic Kernel with OpenAI and Ollama support.
+// .NET: equivalent of builder.Services.AddSingleton + HttpClient + IOptions<LlmOptions>
 var llmConfig = builder.Configuration.GetSection("Llm");
 var kernelBuilder = Kernel.CreateBuilder();
 
 if (llmConfig["Provider"] == "Ollama")
 {
-    // Переключение на локальную модель через OpenAI-совместимый API Ollama
+    // Switch to a local model via Ollama's OpenAI-compatible API.
     kernelBuilder.AddOpenAIChatCompletion(
         modelId: llmConfig["OllamaModel"] ?? "llama3",
         apiKey: "ollama",
@@ -43,10 +43,10 @@ if (llmConfig["Provider"] == "Ollama")
 }
 else
 {
-    // Проверка через IsNullOrWhiteSpace — пустая строка из appsettings не должна считаться валидным ключом
+    // Use IsNullOrWhiteSpace — an empty string from appsettings must not be treated as a valid key.
     var apiKey = llmConfig["ApiKey"];
     if (string.IsNullOrWhiteSpace(apiKey))
-        throw new InvalidOperationException("Llm:ApiKey не задан (ожидается env var Llm__ApiKey)");
+        throw new InvalidOperationException("Llm:ApiKey is not set (expected env var Llm__ApiKey)");
 
     kernelBuilder.AddOpenAIChatCompletion(
         modelId: llmConfig["ModelId"] ?? "gpt-4o-mini",
@@ -57,25 +57,25 @@ var kernel = kernelBuilder.Build();
 builder.Services.AddSingleton(kernel);
 builder.Services.AddSingleton(kernel.GetRequiredService<IChatCompletionService>());
 
-// Эмбеддинги через Microsoft.Extensions.AI (IEmbeddingGenerator<,>) —
-// провайдер-агностичный интерфейс, в отличие от SK-шного ITextEmbeddingGenerationService (experimental).
-// .NET: builder.Services.AddSingleton<IEmbeddingGenerator<...>>(...) под капотом.
+// Embeddings via Microsoft.Extensions.AI (IEmbeddingGenerator<,>) —
+// provider-agnostic interface, unlike SK's ITextEmbeddingGenerationService (experimental).
+// .NET: builder.Services.AddSingleton<IEmbeddingGenerator<...>>(...) under the hood.
 if (llmConfig["Provider"] != "Ollama")
 {
-    var apiKey = llmConfig["ApiKey"]!; // уже провалидирован выше
+    var apiKey = llmConfig["ApiKey"]!; // validated above
     var embeddingModel = llmConfig["EmbeddingModel"] ?? "text-embedding-3-small";
-    // SKEXP0010 — API помечен Experimental; стабилизируется в M.Extensions.AI 10.0
+    // SKEXP0010 — API is marked Experimental; stabilizes in M.Extensions.AI 10.0
     #pragma warning disable SKEXP0010
     builder.Services.AddOpenAIEmbeddingGenerator(embeddingModel, apiKey);
     #pragma warning restore SKEXP0010
 }
 
-// Qdrant gRPC-клиент. Соединение ленивое — устанавливается при первом вызове,
-// поэтому отсутствие Qdrant не валит старт API (важно для тестов и health-чеков).
-// .NET: AddSingleton, потому что QdrantClient thread-safe и хранит gRPC-канал.
+// Qdrant gRPC client. Connection is lazy — established on first call,
+// so a missing Qdrant instance does not crash API startup (important for tests and health checks).
+// .NET: AddSingleton because QdrantClient is thread-safe and holds the gRPC channel.
 //
-// Для Qdrant Cloud — нужны UseTls=true (HTTPS на 6334) и ApiKey.
-// Локально через docker compose — оба пусты, ходим plaintext на localhost:6334.
+// Qdrant Cloud requires UseTls=true (HTTPS on 6334) and ApiKey.
+// Local docker compose — both empty, plain-text on localhost:6334.
 var qdrantConfig = builder.Configuration.GetSection("Qdrant");
 builder.Services.AddSingleton(new QdrantClient(
     host: qdrantConfig["Host"] ?? "localhost",
@@ -85,40 +85,40 @@ builder.Services.AddSingleton(new QdrantClient(
 
 /*
  * ────────────────────────────────────────────────────────────────────────────────
- *  БУДУЩЕЕ: миграция на Microsoft.Extensions.AI (M.E.AI) — новый официальный SDK
- *  от MS, который заменит Semantic Kernel ChatCompletion как абстракцию.
- *  Пакеты: Microsoft.Extensions.AI + Microsoft.Extensions.AI.OpenAI
+ *  FUTURE: migrate to Microsoft.Extensions.AI (M.E.AI) — the new official MS SDK
+ *  that will replace Semantic Kernel ChatCompletion as the abstraction layer.
+ *  Packages: Microsoft.Extensions.AI + Microsoft.Extensions.AI.OpenAI
  *
- *  Плюсы:
- *  - Провайдер-агностичный интерфейс IChatClient (OpenAI, Azure, Anthropic, Ollama
- *    через единый API, без kernel-овского IoC внутри SK)
- *  - Встроенная композиция через middleware: tracing, кэш, retry, function calling
- *  - Регистрируется как обычный сервис в стандартном DI .NET (без Kernel-обёртки)
+ *  Benefits:
+ *  - Provider-agnostic IChatClient (OpenAI, Azure, Anthropic, Ollama
+ *    through a single API, without SK's internal IoC Kernel wrapper)
+ *  - Built-in middleware composition: tracing, caching, retry, function calling
+ *  - Registered as a plain .NET DI service (no Kernel wrapper)
  *
- *  Как будет выглядеть (закомментировано — для миграции на этапе 6+):
+ *  What it will look like (commented out — for migration at stage 6+):
  *
- *  using Microsoft.Extensions.AI;          // .NET: главный namespace
- *  using OpenAI;                            // официальный OpenAI SDK
+ *  using Microsoft.Extensions.AI;          // .NET: main namespace
+ *  using OpenAI;                            // official OpenAI SDK
  *
- *  // 1. Создаём низкоуровневый клиент OpenAI и оборачиваем его в IChatClient
- *  //    .NET: эквивалент HttpClientFactory + типизированный клиент
+ *  // 1. Create a low-level OpenAI client and wrap it in IChatClient.
+ *  //    .NET: equivalent of HttpClientFactory + typed client
  *  IChatClient chatClient = new OpenAIClient(apiKey)
- *      .GetChatClient(modelId)              // получаем ChatClient для конкретной модели
- *      .AsIChatClient();                    // extension-метод адаптер OpenAI → M.E.AI
+ *      .GetChatClient(modelId)              // get a ChatClient for the specific model
+ *      .AsIChatClient();                    // extension-method adapter OpenAI → M.E.AI
  *
- *  // 2. Композиция через билдер — наслаиваем middleware декораторами.
- *  //    .NET: похоже на HttpMessageHandler pipeline у HttpClient
+ *  // 2. Compose via builder — layer middleware as decorators.
+ *  //    .NET: similar to HttpMessageHandler pipeline in HttpClient
  *  chatClient = new ChatClientBuilder(chatClient)
- *      .UseLogging(loggerFactory)           // лог каждого запроса/ответа
- *      .UseDistributedCache(cache)          // кэш ответов на одинаковые промпты
- *      .UseFunctionInvocation()             // авто-вызов tools/functions
- *      .UseOpenTelemetry()                  // трейсинг для Jaeger/Grafana
+ *      .UseLogging(loggerFactory)           // log every request/response
+ *      .UseDistributedCache(cache)          // cache responses for identical prompts
+ *      .UseFunctionInvocation()             // auto-invoke tools/functions
+ *      .UseOpenTelemetry()                  // tracing for Jaeger/Grafana
  *      .Build();
  *
- *  // 3. Регистрация в DI — обычный AddSingleton, без Kernel
+ *  // 3. Register in DI — plain AddSingleton, no Kernel
  *  builder.Services.AddSingleton(chatClient);
  *
- *  // Альтернатива через extension methods (когда выйдут официально):
+ *  // Alternative via extension methods (when officially released):
  *  // builder.Services.AddChatClient(sp => new OpenAIClient(apiKey)
  *  //     .GetChatClient(modelId).AsIChatClient())
  *  //     .UseLogging()
@@ -127,8 +127,8 @@ builder.Services.AddSingleton(new QdrantClient(
  */
 
 // .NET: builder.Services.AddScoped<IRagService, RagService>()
-// Локализация. JSON-файлы лежат рядом с бинарником (копируются через .csproj Content include).
-// Singleton — читаем один раз на старте, дальше всё в памяти.
+// Localization. JSON files sit next to the binary (copied via .csproj Content include).
+// Singleton — loaded once at startup, everything stays in memory afterward.
 builder.Services.AddSingleton<ILocalizationProvider>(sp => new JsonLocalizationProvider(
     localesDirectory: Path.Combine(AppContext.BaseDirectory, "locales"),
     defaultLanguage: builder.Configuration["Localization:DefaultLanguage"] ?? "ru",
@@ -137,23 +137,23 @@ builder.Services.AddSingleton<ILocalizationProvider>(sp => new JsonLocalizationP
 builder.Services.AddScoped<IRagService, RagService>();
 builder.Services.AddScoped<IIngestionService, IngestionService>();
 
-// Хранилище диалоговых сессий — Singleton, чтобы история переживала HTTP-запросы.
-// ChatService остаётся Scoped (зависит от Scoped IRagService) — Scoped → Singleton ОК.
-// .NET: эквивалент builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>().
+// Session store is Singleton so chat history survives across HTTP requests.
+// ChatService stays Scoped (depends on Scoped IRagService) — Scoped depending on Singleton is fine.
+// .NET: equivalent of builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>().
 builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>();
 builder.Services.AddScoped<IChatService, ChatService>();
 
-// Health checks — для Railway / K8s liveness/readiness проб.
-// .NET: builder.Services.AddHealthChecks().AddCheck<T>(name, tags) — стандартный паттерн ASP.NET Core.
-// Теги "ready" vs "live": live проверяет что процесс жив, ready — что зависимости доступны.
+// Health checks for Railway / K8s liveness/readiness probes.
+// .NET: builder.Services.AddHealthChecks().AddCheck<T>(name, tags) — standard ASP.NET Core pattern.
+// Tags "ready" vs "live": live checks that the process is alive, ready — that dependencies are reachable.
 builder.Services.AddHealthChecks()
-    // OpenAI: только наличие ключа (реальный ping стоил бы денег и фейлил бы при rate-limit)
+    // OpenAI: key presence only (a real ping would cost money and fail under rate-limit)
     .AddCheck("openai_apikey",
         () => string.IsNullOrWhiteSpace(builder.Configuration["Llm:ApiKey"])
-            ? HealthCheckResult.Unhealthy("Llm:ApiKey не задан")
+            ? HealthCheckResult.Unhealthy("Llm:ApiKey is not set")
             : HealthCheckResult.Healthy(),
         tags: ["ready"])
-    // Qdrant: реальный gRPC health-ping с таймаутом 3 сек
+    // Qdrant: real gRPC health-ping with a 3-second timeout
     .AddCheck<QdrantHealthCheck>("qdrant", tags: ["ready"]);
 
 var app = builder.Build();
@@ -163,8 +163,8 @@ app.UseCors();
 if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 
-// /health — полный отчёт со статусом каждого чека.
-// .NET: app.MapHealthChecks("/health") + кастомный ResponseWriter для JSON-вывода.
+// /health — full report with each check's status.
+// .NET: app.MapHealthChecks("/health") + custom ResponseWriter for JSON output.
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
     ResponseWriter = async (ctx, report) =>
@@ -187,14 +187,14 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
     }
 });
 
-// /health/live — лёгкая проверка «процесс жив» без зависимостей (Predicate: _ => false означает «ни одного чека»)
+// /health/live — lightweight "process is alive" check with no dependencies (Predicate: _ => false means no checks run)
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
     Predicate = _ => false
 });
 
-// SSE-стриминг чата
-// .NET: [HttpPost("stream")] с Response.Body streaming
+// SSE chat streaming.
+// .NET: [HttpPost("stream")] with Response.Body streaming
 app.MapPost("/api/chat/stream", async (ChatRequest request, IChatService chatService, HttpResponse response, CancellationToken ct) =>
 {
     response.ContentType = "text/event-stream";
@@ -212,8 +212,8 @@ app.MapPost("/api/chat/stream", async (ChatRequest request, IChatService chatSer
 .WithName("ChatStream")
 .WithTags("Chat");
 
-// Загрузка PDF-документа для RAG-индексации.
-// scope = "shared" (видно всем) | "private" (только в своей сессии).
+// Upload a PDF document for RAG indexing.
+// scope = "shared" (visible to all) | "private" (only within the current session).
 // .NET: [HttpPost("upload")] + IFormFile + [FromForm].
 app.MapPost("/api/documents/upload", async (
     IFormFile file,
@@ -222,16 +222,16 @@ app.MapPost("/api/documents/upload", async (
     CancellationToken ct) =>
 {
     if (file.Length == 0)
-        return Results.BadRequest("Файл пустой");
+        return Results.BadRequest("File is empty");
 
-    // Form-поля — multipart, не JSON. Берём напрямую из формы.
+    // Form fields are multipart, not JSON — read directly from the form.
     var scope = req.Form["scope"].ToString();
-    if (string.IsNullOrEmpty(scope)) scope = "private"; // безопасный дефолт
+    if (string.IsNullOrEmpty(scope)) scope = "private"; // safe default
     var sessionId = req.Form["sessionId"].ToString();
     if (string.IsNullOrEmpty(sessionId)) sessionId = null!;
 
     if (scope == "private" && string.IsNullOrEmpty(sessionId))
-        return Results.BadRequest("Для scope=private требуется sessionId");
+        return Results.BadRequest("sessionId is required for scope=private");
 
     await using var stream = file.OpenReadStream();
     var result = await ingestionService.IngestAsync(stream, file.FileName, scope, sessionId, ct);
@@ -242,7 +242,7 @@ app.MapPost("/api/documents/upload", async (
 .WithTags("Documents")
 .DisableAntiforgery();
 
-// Список доступных в данной сессии документов (shared + свои private).
+// List documents available in the current session (shared + own private ones).
 app.MapGet("/api/documents", async (
     string? sessionId,
     IIngestionService svc,
@@ -258,8 +258,8 @@ app.MapGet("/api/documents", async (
     }
     catch (Exception ex)
     {
-        // .NET: вместо дефолтного 500 с пустым телом — возвращаем ProblemDetails с типом исключения,
-        // чтобы видеть причину прямо в DevTools без захода в Railway-логи.
+        // .NET: instead of a default 500 with an empty body — return ProblemDetails with the exception type
+        // so the cause is visible directly in DevTools without opening Railway logs.
         log.LogError(ex, "ListAsync FAILED: sessionId={Sid}", sessionId);
         return Results.Problem(
             title: "Documents list failed",
@@ -270,7 +270,7 @@ app.MapGet("/api/documents", async (
 .WithName("DocumentList")
 .WithTags("Documents");
 
-// Удаление собственного приватного документа.
+// Delete the caller's own private document.
 // .NET: [HttpDelete("{name}")] + [FromQuery] sessionId.
 app.MapDelete("/api/documents/{name}", async (
     string name,
@@ -279,7 +279,7 @@ app.MapDelete("/api/documents/{name}", async (
     CancellationToken ct) =>
 {
     if (string.IsNullOrEmpty(sessionId))
-        return Results.BadRequest("sessionId обязателен");
+        return Results.BadRequest("sessionId is required");
     var removed = await svc.DeleteAsync(name, sessionId, ct);
     return removed == 0 ? Results.NotFound() : Results.Ok(new { removed });
 })
@@ -288,6 +288,6 @@ app.MapDelete("/api/documents/{name}", async (
 
 app.Run();
 
-// .NET: WebApplicationFactory<Program> требует, чтобы Program был public-типом.
-// В минимальных API он генерится internal, поэтому объявляем partial-расширение.
+// .NET: WebApplicationFactory<Program> requires Program to be a public type.
+// In minimal APIs it is generated as internal, so we declare a partial extension.
 public partial class Program;

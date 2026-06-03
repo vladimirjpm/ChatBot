@@ -1,31 +1,31 @@
 namespace ChatBot.Core.Interfaces;
 
 /// <summary>
-/// Загрузка, листинг и удаление документов в векторной БД.
+/// Upload, list, and delete documents in the vector DB.
 ///
 /// Scope:
-/// - "shared"  — доступен всем сессиям (общая база знаний)
-/// - "private" — доступен только в своей сессии (приватный CV/контекст)
+/// - "shared"  — accessible to all sessions (shared knowledge base)
+/// - "private" — accessible only within its own session (private CV/context)
 /// </summary>
 public interface IIngestionService
 {
     /// <summary>
-    /// Парсит PDF, нарезает на чанки, создаёт эмбеддинги и сохраняет в Qdrant.
+    /// Parses a PDF, splits it into chunks, generates embeddings, and stores them in Qdrant.
     /// </summary>
-    /// <param name="stream">Поток байт загружаемого файла.</param>
-    /// <param name="fileName">Оригинальное имя файла для метаданных.</param>
-    /// <param name="scope">"shared" или "private".</param>
-    /// <param name="sessionId">Обязателен для scope=private, игнорируется для shared.</param>
+    /// <param name="stream">Byte stream of the uploaded file.</param>
+    /// <param name="fileName">Original file name for metadata.</param>
+    /// <param name="scope">"shared" or "private".</param>
+    /// <param name="sessionId">Required for scope=private; ignored for shared.</param>
     Task<IngestionResult> IngestAsync(Stream stream, string fileName, string scope, string? sessionId, CancellationToken ct = default);
 
     /// <summary>
-    /// Возвращает список документов, доступных в данной сессии (shared + private этой сессии).
+    /// Returns documents accessible in the given session (shared + private of this session).
     /// </summary>
     Task<IReadOnlyList<DocumentInfo>> ListAsync(string? sessionId, CancellationToken ct = default);
 
     /// <summary>
-    /// Удаляет приватный документ текущей сессии. Shared удалить нельзя через этот метод.
+    /// Deletes a private document of the current session. Shared documents cannot be deleted via this method.
     /// </summary>
-    /// <returns>Число удалённых чанков.</returns>
+    /// <returns>Number of chunks deleted.</returns>
     Task<int> DeleteAsync(string documentName, string sessionId, CancellationToken ct = default);
 }

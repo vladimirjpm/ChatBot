@@ -5,19 +5,19 @@ using ChatBot.Core.Interfaces;
 namespace ChatBot.Infrastructure.Services;
 
 /// <summary>
-/// In-memory реализация <see cref="ISessionStore"/> на ConcurrentDictionary.
+/// In-memory implementation of <see cref="ISessionStore"/> backed by ConcurrentDictionary.
 ///
-/// Регистрируется как Singleton — состояние переживает HTTP-запросы.
-/// Подходит для single-instance деплоя (Railway, локально).
-/// Для горизонтального масштабирования нужен RedisSessionStore.
+/// Registered as Singleton — state survives across HTTP requests.
+/// Suitable for single-instance deployments (Railway, local).
+/// Horizontal scaling requires a RedisSessionStore.
 ///
-/// .NET: эквивалент MemoryCache, но без TTL/eviction (техдолг — закроется
-/// переездом на Redis, где TTL из коробки).
+/// .NET: equivalent of MemoryCache but without TTL/eviction (tech debt — will be
+/// resolved when migrating to Redis, which has TTL built in).
 /// </summary>
 public class InMemorySessionStore : ISessionStore
 {
-    // ConcurrentDictionary — потокобезопасный для конкурентных Get/Set из разных сессий.
-    // Гонка возможна только внутри одного sessionId при одновременных запросах (см. SessionState).
+    // ConcurrentDictionary is thread-safe for concurrent Get/Set across different sessions.
+    // A race is only possible within a single sessionId under simultaneous requests (see SessionState).
     private readonly ConcurrentDictionary<Guid, SessionState> _sessions = new();
 
     public ValueTask<SessionState?> GetAsync(Guid sessionId, CancellationToken ct = default)

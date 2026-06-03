@@ -6,9 +6,9 @@ using Xunit;
 namespace ChatBot.Tests;
 
 /// <summary>
-/// Юнит-тесты <see cref="InMemorySessionStore"/>.
-/// Главный регрессионный кейс: Set → Get возвращает то, что положили
-/// (раньше Dictionary жил в Scoped-сервисе и терял состояние между запросами).
+/// Unit tests for <see cref="InMemorySessionStore"/>.
+/// Key regression case: Set → Get returns exactly what was stored
+/// (previously the Dictionary lived in a Scoped service and lost state between requests).
 /// </summary>
 public class InMemorySessionStoreTests
 {
@@ -39,8 +39,8 @@ public class InMemorySessionStoreTests
     [Fact]
     public async Task ConcurrentSets_DoNotThrow()
     {
-        // ConcurrentDictionary-based реализация должна выдержать конкурентные записи
-        // в разные ключи без исключений (главная задача — Thread-safe API).
+        // ConcurrentDictionary-based implementation must survive concurrent writes
+        // to different keys without exceptions (the primary goal — thread-safe API).
         var store = new InMemorySessionStore();
 
         var tasks = Enumerable.Range(0, 200).Select(i => Task.Run(async () =>

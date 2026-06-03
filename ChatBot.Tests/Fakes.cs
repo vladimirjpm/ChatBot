@@ -5,8 +5,8 @@ using ChatBot.Core.Interfaces;
 namespace ChatBot.Tests;
 
 /// <summary>
-/// Фейк <see cref="IChatService"/> — отдаёт детерминированный набор токенов без обращения к LLM.
-/// .NET: аналог Moq-объекта, но без зависимости от Moq — для простого стримингового API проще написать руками.
+/// Fake <see cref="IChatService"/> — returns a deterministic set of tokens without calling the LLM.
+/// .NET: equivalent of a Moq mock but without the Moq dependency — easier to hand-write for a simple streaming API.
 /// </summary>
 public sealed class FakeChatService : IChatService
 {
@@ -18,7 +18,7 @@ public sealed class FakeChatService : IChatService
     {
         ReceivedRequests.Add(request);
 
-        // Имитируем стриминг тремя токенами — async для соответствия сигнатуре IAsyncEnumerable
+        // Simulate streaming with three tokens — async to satisfy the IAsyncEnumerable signature
         foreach (var token in new[] { "Hello", ", ", "world!" })
         {
             await Task.Yield();
@@ -27,9 +27,7 @@ public sealed class FakeChatService : IChatService
     }
 }
 
-/// <summary>
-/// Фейк <see cref="IIngestionService"/> — возвращает фиксированные ответы, ничего не пишет.
-/// </summary>
+/// <summary>Fake <see cref="IIngestionService"/> — returns fixed responses and writes nothing.</summary>
 public sealed class FakeIngestionService : IIngestionService
 {
     public Task<IngestionResult> IngestAsync(Stream stream, string fileName, string scope, string? sessionId, CancellationToken ct = default)

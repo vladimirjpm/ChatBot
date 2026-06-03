@@ -1,15 +1,15 @@
 namespace ChatBot.Core.Interfaces;
 
 /// <summary>
-/// RAG-поиск: семантический поиск релевантных чанков по запросу пользователя.
+/// RAG retrieval: semantic search for relevant chunks matching a user query.
 /// </summary>
 public interface IRagService
 {
     /// <summary>
-    /// Ищет top-K наиболее близких чанков. Видны shared-документы + private текущей сессии.
+    /// Finds the top-K closest chunks. Includes shared documents + private ones of the current session.
     /// </summary>
-    /// <param name="query">Текст запроса пользователя.</param>
-    /// <param name="sessionId">ID сессии для доступа к приватным чанкам. null = только shared.</param>
-    /// <param name="topK">Количество возвращаемых чанков.</param>
+    /// <param name="query">User query text.</param>
+    /// <param name="sessionId">Session ID for access to private chunks. null = shared only.</param>
+    /// <param name="topK">Number of chunks to return.</param>
     Task<IReadOnlyList<RagChunk>> SearchAsync(string query, string? sessionId, int topK = 5, CancellationToken ct = default);
 }

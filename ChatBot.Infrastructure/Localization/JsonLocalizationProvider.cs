@@ -4,11 +4,11 @@ using Microsoft.Extensions.Logging;
 namespace ChatBot.Infrastructure.Localization;
 
 /// <summary>
-/// Загружает локали из JSON-файлов <c>{lang}.json</c> в заданной папке при старте процесса.
-/// Используется как singleton — файлы читаются один раз, дальше всё в памяти.
+/// Loads locales from <c>{lang}.json</c> files in the given directory at process startup.
+/// Used as a singleton — files are read once; everything is kept in memory afterward.
 ///
-/// .NET: эквивалент <c>IConfiguration</c> с JsonConfigurationProvider, но без секций —
-/// каждый файл это один <see cref="Locale"/>.
+/// .NET: equivalent of <c>IConfiguration</c> with JsonConfigurationProvider but without sections —
+/// each file is one <see cref="Locale"/>.
 /// </summary>
 public sealed class JsonLocalizationProvider : ILocalizationProvider
 {
@@ -18,20 +18,20 @@ public sealed class JsonLocalizationProvider : ILocalizationProvider
     public IReadOnlyCollection<string> AvailableLanguages => _locales.Keys;
 
     /// <summary>
-    /// Сканирует <paramref name="localesDirectory"/> на файлы <c>*.json</c>, имя без расширения
-    /// становится кодом языка. Падает на старте если папка пуста или JSON некорректный —
-    /// fail-fast по best practice для конфигурации.
+    /// Scans <paramref name="localesDirectory"/> for <c>*.json</c> files; the name without extension
+    /// becomes the language code. Throws on startup if the directory is empty or JSON is invalid —
+    /// fail-fast as per configuration best practice.
     /// </summary>
     public JsonLocalizationProvider(string localesDirectory, string defaultLanguage, ILogger<JsonLocalizationProvider> logger)
     {
         _defaultLanguage = defaultLanguage;
 
         if (!Directory.Exists(localesDirectory))
-            throw new DirectoryNotFoundException($"Папка локалей не найдена: {localesDirectory}");
+            throw new DirectoryNotFoundException($"Locales directory not found: {localesDirectory}");
 
         var files = Directory.GetFiles(localesDirectory, "*.json");
         if (files.Length == 0)
-            throw new InvalidOperationException($"В {localesDirectory} нет ни одного *.json");
+            throw new InvalidOperationException($"No *.json files found in {localesDirectory}");
 
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         foreach (var file in files)
@@ -39,14 +39,14 @@ public sealed class JsonLocalizationProvider : ILocalizationProvider
             var lang = Path.GetFileNameWithoutExtension(file);
             using var stream = File.OpenRead(file);
             var locale = JsonSerializer.Deserialize<Locale>(stream, options)
-                ?? throw new InvalidOperationException($"Не удалось десериализовать {file}");
+                ?? throw new InvalidOperationException($"Failed to deserialize {file}");
             _locales[lang] = locale;
-            logger.LogInformation("Загружена локаль {Lang} из {File}", lang, file);
+            logger.LogInformation("Loaded locale {Lang} from {File}", lang, file);
         }
 
         if (!_locales.ContainsKey(_defaultLanguage))
             throw new InvalidOperationException(
-                $"Дефолтный язык '{_defaultLanguage}' не найден среди загруженных: {string.Join(", ", _locales.Keys)}");
+                $"Default language '{_defaultLanguage}' not found among loaded locales: {string.Join(", ", _locales.Keys)}");
     }
 
     public Locale Get(string? language)

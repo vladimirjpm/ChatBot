@@ -9,15 +9,15 @@ export type UploadStatus =
   | { kind: 'error'; message: string }
 
 /**
- * Загрузка PDF в RAG-индекс через POST /api/documents/upload.
- * Используется и на экране выбора роли, и внутри чата — поэтому логика вынесена в хук.
+ * Upload a PDF to the RAG index via POST /api/documents/upload.
+ * Used both on the role-selection screen and inside the chat — hence the logic is extracted into a hook.
  *
- * .NET: эквивалент типизированного HttpClient-сервиса, инжектируемого через DI.
+ * .NET: equivalent of a typed HttpClient service injected via DI.
  */
 export function useDocumentUpload() {
   const [status, setStatus] = useState<UploadStatus>({ kind: 'idle' })
 
-  // scope: 'shared' — виден всем, 'private' — только в текущей сессии
+  // scope: 'shared' — visible to all, 'private' — visible only in the current session.
   const upload = useCallback(async (file: File, scope: 'shared' | 'private', sessionId?: string) => {
     setStatus({ kind: 'uploading', fileName: file.name })
     try {
@@ -32,7 +32,7 @@ export function useDocumentUpload() {
       setTimeout(() => setStatus(s => s.kind === 'success' ? { kind: 'idle' } : s), 5000)
       return data
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Ошибка загрузки'
+      const message = err instanceof Error ? err.message : 'Upload error'
       setStatus({ kind: 'error', message })
       setTimeout(() => setStatus(s => s.kind === 'error' ? { kind: 'idle' } : s), 5000)
       throw err

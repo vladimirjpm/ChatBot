@@ -7,11 +7,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace ChatBot.Tests;
 
 /// <summary>
-/// Тестовая фабрика приложения: поднимает <c>Program</c> in-memory и подменяет
-/// внешние зависимости (LLM, ingestion) на фейки, чтобы тесты были детерминированными
-/// и не требовали сети / OpenAI ключа.
+/// Test application factory: starts <c>Program</c> in-memory and replaces
+/// external dependencies (LLM, ingestion) with fakes so tests are deterministic
+/// and require no network access or OpenAI key.
 ///
-/// .NET: эквивалент <c>TestServer</c> + <c>IConfigureWebHostBuilder</c> из старого ASP.NET Core.
+/// .NET: equivalent of <c>TestServer</c> + <c>IConfigureWebHostBuilder</c> from classic ASP.NET Core.
 /// </summary>
 public sealed class TestWebFactory : WebApplicationFactory<Program>
 {
@@ -20,15 +20,15 @@ public sealed class TestWebFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Llm:ApiKey проверяется на старте Program — даём заведомо валидную (по форме) строку,
-        // реальный IChatCompletionService всё равно не вызывается, так как IChatService подменён ниже.
+        // Llm:ApiKey is validated at Program startup — provide a formally valid string;
+        // the real IChatCompletionService is never called because IChatService is replaced below.
         builder.UseSetting("Llm:ApiKey", "test-key-not-used");
         builder.UseSetting("Llm:Provider", "OpenAI");
         builder.UseSetting("Llm:ModelId", "gpt-4o-mini");
 
         builder.ConfigureServices(services =>
         {
-            // .NET: services.Replace(ServiceDescriptor.Scoped<...>) — но проще удалить и переподписать
+            // .NET: services.Replace(ServiceDescriptor.Scoped<...>) — but easier to remove and re-add
             services.RemoveAll<IChatService>();
             services.RemoveAll<IIngestionService>();
             services.AddSingleton<IChatService>(ChatService);

@@ -1,8 +1,6 @@
 namespace ChatBot.Core;
 
-/// <summary>
-/// Чанк документа, сохранённый в векторной БД для RAG-поиска.
-/// </summary>
+/// <summary>Document chunk stored in the vector DB for RAG retrieval.</summary>
 public record RagChunk(
     Guid Id,
     string DocumentName,
@@ -11,14 +9,10 @@ public record RagChunk(
     float[] Embedding
 );
 
-/// <summary>
-/// Одно сообщение в диалоге (пользователь или ассистент).
-/// </summary>
+/// <summary>A single dialogue message (user or assistant).</summary>
 public record ChatMessage(string Role, string Content, DateTimeOffset Timestamp);
 
-/// <summary>
-/// Сессия диалога — контейнер истории сообщений.
-/// </summary>
+/// <summary>Chat session — container for message history.</summary>
 public class ChatSession
 {
     public Guid Id { get; init; } = Guid.NewGuid();
@@ -27,12 +21,10 @@ public class ChatSession
 }
 
 /// <summary>
-/// Запрос стримингового чата от клиента.
-/// Role — роль для симулятора собеседований (dotnet / react / devops).
-/// Передаётся только при старте новой сессии.
-/// </summary>
-/// <summary>
-/// Language — язык интервью: "ru" или "en". По умолчанию русский.
+/// Streaming chat request from the client.
+/// Role — role for the interview simulator (dotnet / react / devops).
+/// Sent only at the start of a new session.
+/// Language — interview language: "ru" or "en". Defaults to Russian.
 /// </summary>
 public record ChatRequest(
     string Message,
@@ -40,41 +32,39 @@ public record ChatRequest(
     string? Role = null,
     string? ResumeContext = null,
     string? Language = "ru",
-    // "interview" — симулятор собеседования, RAG в роли вспомогательного контекста (мягкий grounding)
-    // "assistant" — RAG-чат поверх документов с жёстким grounding ("не нашёл — не знаю")
+    // "interview" — interview simulator; RAG acts as supplementary context (soft grounding)
+    // "assistant" — RAG chat over documents with hard grounding ("not found — don't know")
     string? Mode = null);
 
-/// <summary>
-/// Результат загрузки документа.
-/// </summary>
+/// <summary>Result of document ingestion.</summary>
 public record IngestionResult(int ChunksIndexed, string DocumentName);
 
 /// <summary>
-/// Информация о загруженном документе для отображения в UI.
-/// Scope: "shared" (виден всем) или "private" (только в своей сессии).
+/// Uploaded document metadata for the UI.
+/// Scope: "shared" (visible to all) or "private" (visible only within the current session).
 /// </summary>
 public record DocumentInfo(string Name, string Scope, int Chunks);
 
 /// <summary>
-/// Одно сообщение в истории сессии для LLM.
+/// A single message in the session history passed to the LLM.
 ///
-/// Role — строковая ("user" / "assistant" / "system"), чтобы Core-слой не
-/// зависел от Semantic Kernel (AuthorRole живёт в SK). Маппинг в AuthorRole
-/// делается в ChatService при сборке ChatHistory.
+/// Role is a string ("user" / "assistant" / "system") so the Core layer does not
+/// depend on Semantic Kernel (AuthorRole lives in SK). Mapping to AuthorRole
+/// happens in ChatService when building ChatHistory.
 /// </summary>
 public record SessionMessage(string Role, string Content);
 
 /// <summary>
-/// Состояние диалоговой сессии: фиксированный системный промпт
-/// (строится при первом сообщении из режима / роли / резюме / языка)
-/// и хронология user/assistant пар.
+/// Dialogue session state: a fixed system prompt
+/// (built on the first message from mode / role / resume / language)
+/// and the chronological user/assistant pair history.
 ///
-/// RAG-контекст в History НЕ записывается — он инжектится свежим на каждый
-/// запрос, иначе устаревшие чанки засоряли бы контекст.
+/// RAG context is NOT stored in History — it is injected fresh on each request;
+/// otherwise stale chunks would pollute the context window.
 ///
-/// Используется ISessionStore (Singleton) для хранения между HTTP-запросами.
-/// History — мутируемый List, поэтому при двух конкурентных запросах в одну
-/// сессию возможна гонка (TODO: per-session lock). На практике фронт блокирует
-/// ввод при streaming (см. useChat.ts isStreaming), поэтому реальный риск низкий.
+/// Stored in ISessionStore (Singleton) so it survives across HTTP requests.
+/// History is a mutable List, so two concurrent requests to the same session
+/// can race (TODO: per-session lock). In practice the frontend blocks input
+/// during streaming (see useChat.ts isStreaming), so the real risk is low.
 /// </summary>
 public record SessionState(string BaseSystemPrompt, List<SessionMessage> History);

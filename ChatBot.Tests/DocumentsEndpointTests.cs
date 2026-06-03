@@ -7,9 +7,7 @@ using Xunit;
 
 namespace ChatBot.Tests;
 
-/// <summary>
-/// Интеграционные тесты <c>POST /api/documents/upload</c>.
-/// </summary>
+/// <summary>Integration tests for <c>POST /api/documents/upload</c>.</summary>
 public class DocumentsEndpointTests : IClassFixture<TestWebFactory>
 {
     private readonly TestWebFactory _factory;
@@ -62,7 +60,7 @@ public class DocumentsEndpointTests : IClassFixture<TestWebFactory>
         using var content = new MultipartFormDataContent
         {
             { new StringContent("private"), "scope" }
-            // sessionId намеренно не передаём
+            // sessionId intentionally omitted
         };
         var file = new ByteArrayContent(Encoding.UTF8.GetBytes("fake"));
         file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");

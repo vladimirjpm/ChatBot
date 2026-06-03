@@ -3,15 +3,15 @@ import ruRaw from '@locales/ru.json'
 import enRaw from '@locales/en.json'
 
 /**
- * UI-строки берутся из общих JSON-файлов /locales/{lang}.json (тех же что использует backend).
- * Vite импортирует JSON напрямую через alias @locales (см. vite.config.ts).
+ * UI strings come from shared JSON files /locales/{lang}.json (the same ones used by the backend).
+ * Vite imports JSON directly via the @locales alias (see vite.config.ts).
  *
- * Чтобы добавить язык — положить файл locales/de.json и добавить кейс в t().
- * parity между файлами проверяется юнит-тестом на backend (LocalizationParityTests).
+ * To add a language — add locales/de.json and a case in t().
+ * Key parity across files is enforced by the backend unit test (LocalizationParityTests).
  */
 
-// Структура UI-блока выводится из ru.json через 'as const' — TypeScript даёт автокомплит.
-// Если в коде запросить s.unknownKey — будет compile-time ошибка.
+// UI block shape is inferred from ru.json via 'as const' — TypeScript provides autocomplete.
+// Requesting s.unknownKey in code produces a compile-time error.
 export type Strings = typeof ruRaw.ui
 
 const ru: Strings = ruRaw.ui
@@ -26,8 +26,8 @@ export function t(lang: Language): Strings {
 }
 
 /**
- * Подстановка плейсхолдеров формата {name} в шаблонную строку.
- * Используется для uploadSuccessTemplate и подобных.
+ * Substitutes {name}-style placeholders in a template string.
+ * Used for uploadSuccessTemplate and similar patterns.
  */
 export function format(template: string, args: Record<string, string | number>): string {
   return Object.entries(args).reduce(

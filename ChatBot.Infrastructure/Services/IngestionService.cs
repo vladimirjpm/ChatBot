@@ -8,8 +8,8 @@ using Qdrant.Client.Grpc;
 namespace ChatBot.Infrastructure.Services;
 
 /// <summary>
-/// Pipeline загрузки документа: PDF → текст → чанки → эмбеддинги → Qdrant.
-/// Также отвечает за листинг и удаление документов в коллекции.
+/// Document ingestion pipeline: PDF → text → chunks → embeddings → Qdrant.
+/// Also handles listing and deleting documents in the collection.
 /// </summary>
 public class IngestionService(
     IEmbeddingGenerator<string, Embedding<float>> embeddings,
@@ -23,12 +23,12 @@ public class IngestionService(
         Stream stream, string fileName, string scope, string? sessionId, CancellationToken ct = default)
     {
         if (scope != "shared" && scope != "private")
-            throw new ArgumentException($"scope должен быть 'shared' или 'private', получено '{scope}'", nameof(scope));
+            throw new ArgumentException($"scope must be 'shared' or 'private', got '{scope}'", nameof(scope));
         if (scope == "private" && string.IsNullOrEmpty(sessionId))
-            throw new ArgumentException("Для scope=private обязателен sessionId", nameof(sessionId));
+            throw new ArgumentException("sessionId is required for scope=private", nameof(sessionId));
 
         var pages = PdfTextExtractor.ExtractPages(stream);
-        logger.LogInformation("PDF {File} ({Scope}): {Pages} страниц", fileName, scope, pages.Count);
+        logger.LogInformation("PDF {File} ({Scope}): {Pages} pages", fileName, scope, pages.Count);
 
         await EnsureCollectionAsync(ct);
 
@@ -63,7 +63,7 @@ public class IngestionService(
         if (points.Count > 0)
             await qdrant.UpsertAsync(CollectionName, points, cancellationToken: ct);
 
-        logger.LogInformation("Документ {File}: проиндексировано {Count} чанков", fileName, totalChunks);
+        logger.LogInformation("Document {File}: indexed {Count} chunks", fileName, totalChunks);
         return new IngestionResult(totalChunks, fileName);
     }
 
@@ -83,12 +83,12 @@ public class IngestionService(
         }
         if (!exists)
         {
-            logger.LogWarning("Коллекция {Coll} не существует — возвращаю пустой список", CollectionName);
+            logger.LogWarning("Collection {Coll} does not exist — returning empty list", CollectionName);
             return [];
         }
 
-        // Scroll достаёт все доступные точки с payload, без векторов (экономим трафик).
-        // .NET: эквивалент IAsyncEnumerable + пагинации, но для демо-объёмов хватит одного батча.
+        // Scroll fetches all matching points with payload, without vectors (saves bandwidth).
+        // .NET: equivalent of IAsyncEnumerable + pagination, but a single batch is fine for demo volumes.
         Qdrant.Client.Grpc.ScrollResponse response;
         try
         {
@@ -98,7 +98,7 @@ public class IngestionService(
                 limit: 10_000,
                 vectorsSelector: new WithVectorsSelector { Enable = false },
                 cancellationToken: ct);
-            logger.LogInformation("ScrollAsync OK: returned {N} точек", response.Result.Count);
+            logger.LogInformation("ScrollAsync OK: returned {N} points", response.Result.Count);
         }
         catch (Exception ex)
         {
@@ -106,13 +106,13 @@ public class IngestionService(
             throw;
         }
 
-        // Группируем чанки по (documentName, scope) — каждая пара это один документ для UI.
+        // Group chunks by (documentName, scope) — each pair is one document for the UI.
         return response.Result
             .GroupBy(p => (
                 Name: p.Payload.GetValueOrDefault("documentName")?.StringValue ?? "?",
                 Scope: p.Payload.GetValueOrDefault("scope")?.StringValue ?? "shared"))
             .Select(g => new DocumentInfo(g.Key.Name, g.Key.Scope, g.Count()))
-            .OrderBy(d => d.Scope) // private сверху чтобы свои документы видеть первыми
+            .OrderBy(d => d.Scope) // private first so the user's own documents appear at the top
             .ThenBy(d => d.Name)
             .ToList();
     }
@@ -120,30 +120,30 @@ public class IngestionService(
     public async Task<int> DeleteAsync(string documentName, string sessionId, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(sessionId))
-            throw new ArgumentException("sessionId обязателен", nameof(sessionId));
+            throw new ArgumentException("sessionId is required", nameof(sessionId));
         if (!await qdrant.CollectionExistsAsync(CollectionName, ct))
             return 0;
 
-        // Фильтр гарантирует что удаляются только приватные чанки этой сессии.
-        // Shared удалить через эндпоинт нельзя — это защита от случайной порчи общей базы.
+        // Filter ensures only private chunks belonging to this session are deleted.
+        // Shared documents cannot be deleted via this endpoint — protects the shared collection from accidental damage.
         var filter = QdrantFilters.OwnedPrivateDocument(documentName, sessionId);
 
-        // Сначала считаем сколько удалим (для логов и UI)
+        // Count first to know how many will be deleted (for logs and UI feedback).
         var countResp = await qdrant.CountAsync(CollectionName, filter, cancellationToken: ct);
         if (countResp == 0)
         {
-            logger.LogInformation("Удаление {Doc}: нет приватных чанков для сессии", documentName);
+            logger.LogInformation("Delete {Doc}: no private chunks found for this session", documentName);
             return 0;
         }
 
         await qdrant.DeleteAsync(CollectionName, filter, cancellationToken: ct);
-        logger.LogInformation("Удалено {Count} чанков документа {Doc}", countResp, documentName);
+        logger.LogInformation("Deleted {Count} chunks of document {Doc}", countResp, documentName);
         return (int)countResp;
     }
 
-    // Поля payload, по которым строятся фильтры (Ingestion/Rag/листинг/удаление).
-    // Qdrant Cloud работает в strict-режиме: фильтр по неиндексированному полю → InvalidArgument.
-    // .NET: концептуально похоже на CREATE INDEX в EF Core миграциях.
+    // Payload fields used to build filters (Ingestion/Rag/listing/deletion).
+    // Qdrant Cloud runs in strict mode: filtering on a non-indexed field → InvalidArgument.
+    // .NET: conceptually similar to CREATE INDEX in EF Core migrations.
     private static readonly string[] IndexedKeywordFields = ["scope", "sessionId", "documentName"];
 
     private async Task EnsureCollectionAsync(CancellationToken ct)
@@ -155,11 +155,11 @@ public class IngestionService(
                 CollectionName,
                 new VectorParams { Size = VectorSize, Distance = Distance.Cosine },
                 cancellationToken: ct);
-            logger.LogInformation("Создана Qdrant-коллекция {Name} (dim={Dim}, cosine)", CollectionName, VectorSize);
+            logger.LogInformation("Created Qdrant collection {Name} (dim={Dim}, cosine)", CollectionName, VectorSize);
         }
 
-        // Индексы создаём всегда — это idempotent для коллекций, созданных до фикса.
-        // CreatePayloadIndexAsync безопасно повторно вызывать: если индекс уже есть, Qdrant вернёт ok.
+        // Always create indexes — idempotent for collections created before the fix.
+        // CreatePayloadIndexAsync is safe to call repeatedly: if the index already exists, Qdrant returns ok.
         foreach (var field in IndexedKeywordFields)
         {
             try
@@ -169,12 +169,12 @@ public class IngestionService(
                     field,
                     schemaType: PayloadSchemaType.Keyword,
                     cancellationToken: ct);
-                logger.LogInformation("Payload-индекс {Field} (keyword) на коллекции {Coll} готов", field, CollectionName);
+                logger.LogInformation("Payload index {Field} (keyword) on collection {Coll} is ready", field, CollectionName);
             }
             catch (Exception ex)
             {
-                // Не валим ingest из-за индекса — логируем и идём дальше. Filter упадёт позже, если индекс реально не создан.
-                logger.LogWarning(ex, "Не удалось создать payload-индекс {Field}", field);
+                // Don't fail the ingest because of an index error — log and continue. Filter will fail later if the index truly wasn't created.
+                logger.LogWarning(ex, "Failed to create payload index {Field}", field);
             }
         }
     }

@@ -16,7 +16,7 @@ const API_BASE = import.meta.env.VITE_API_URL ?? ''
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
-  // sessionId как state, чтобы reset() триггерил перерендер и пересчёт списка документов
+  // sessionId as state so reset() triggers a re-render and recalculates the document list.
   const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID())
   const sessionIdRef = useRef<string>(sessionId)
   sessionIdRef.current = sessionId
@@ -47,7 +47,7 @@ export function useChat() {
         body: JSON.stringify({
           message: text,
           sessionId: sessionIdRef.current,
-          // Role, Language, ResumeContext, Mode фиксируются на бэке при первом сообщении сессии
+          // Role, Language, ResumeContext, Mode are fixed on the backend on the first message of the session.
           role: messages.length === 0 ? role : undefined,
           resumeContext: messages.length === 0 ? resumeContext : undefined,
           language: messages.length === 0 ? language : undefined,
@@ -56,7 +56,7 @@ export function useChat() {
         signal: abortRef.current.signal,
       })
 
-      if (!response.ok || !response.body) throw new Error('Ошибка сети')
+      if (!response.ok || !response.body) throw new Error('Network error')
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -82,14 +82,14 @@ export function useChat() {
                 ? { ...m, content: m.content + token }
                 : m
             ))
-          } catch { /* игнорируем битые строки */ }
+          } catch { /* ignore malformed lines */ }
         }
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== 'AbortError') {
         setMessages(prev => prev.map(m =>
           m.id === assistantId
-            ? { ...m, content: '⚠️ Ошибка соединения. Проверь, что backend запущен.' }
+            ? { ...m, content: '⚠️ Connection error. Make sure the backend is running.' }
             : m
         ))
       }

@@ -9,7 +9,7 @@ interface Props {
 export function ChatWindow({ messages }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // Автоскролл к последнему сообщению при стриминге
+  // Auto-scroll to the latest message during streaming.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])

@@ -1,29 +1,29 @@
 namespace ChatBot.Core.Interfaces;
 
 /// <summary>
-/// Хранилище состояния диалоговых сессий.
+/// Storage for dialogue session state.
 ///
-/// Регистрируется как Singleton — состояние живёт между HTTP-запросами.
-/// Так решаем проблему Scoped IChatService + instance-Dictionary: раньше
-/// каждый запрос получал новый ChatService с пустым словарём, и история
-/// диалога никогда не сохранялась.
+/// Registered as Singleton — state persists across HTTP requests.
+/// This solves the Scoped IChatService + instance-Dictionary problem: previously
+/// each request received a new ChatService with an empty dictionary, so chat history
+/// was never preserved.
 ///
-/// In-memory реализация (<see cref="ChatBot.Infrastructure.Services.InMemorySessionStore"/>)
-/// подходит для одной инстанции. Для масштабирования планируется
-/// RedisSessionStore — поэтому API сразу асинхронный (ValueTask).
+/// The in-memory implementation (<see cref="ChatBot.Infrastructure.Services.InMemorySessionStore"/>)
+/// is suitable for single-instance deployments. A RedisSessionStore is planned for
+/// scale-out — that is why the API is async (ValueTask) from the start.
 ///
-/// .NET: аналог IDistributedCache, но типизированный и без сериализации
-/// на этом уровне абстракции. Эквивалент builder.Services.AddSingleton&lt;ISessionStore, ...&gt;().
+/// .NET: similar to IDistributedCache but typed and without serialization
+/// at this abstraction level. Equivalent of builder.Services.AddSingleton&lt;ISessionStore, ...&gt;().
 /// </summary>
 public interface ISessionStore
 {
     /// <summary>
-    /// Получить состояние сессии. null — если сессия не создавалась.
+    /// Get session state. Returns null if the session has not been created yet.
     /// </summary>
     ValueTask<SessionState?> GetAsync(Guid sessionId, CancellationToken ct = default);
 
     /// <summary>
-    /// Сохранить/перезаписать состояние сессии.
+    /// Save or overwrite session state.
     /// </summary>
     ValueTask SetAsync(Guid sessionId, SessionState state, CancellationToken ct = default);
 }

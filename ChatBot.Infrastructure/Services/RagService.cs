@@ -7,8 +7,8 @@ using Qdrant.Client;
 namespace ChatBot.Infrastructure.Services;
 
 /// <summary>
-/// RAG-поиск с учётом приватности: shared-документы видны всем,
-/// private — только в рамках своей сессии.
+/// RAG retrieval with privacy awareness: shared documents are visible to all,
+/// private ones only within their own session.
 /// </summary>
 public class RagService(
     IEmbeddingGenerator<string, Embedding<float>> embeddings,
@@ -27,7 +27,7 @@ public class RagService(
 
         var queryVector = (await embeddings.GenerateAsync([query], cancellationToken: ct))[0].Vector;
 
-        // Поиск с фильтром доступа — shared OR (private + текущая сессия).
+        // Search with access filter — shared OR (private + current session).
         var hits = await qdrant.SearchAsync(
             CollectionName,
             queryVector,
@@ -35,7 +35,7 @@ public class RagService(
             limit: (ulong)topK,
             cancellationToken: ct);
 
-        logger.LogInformation("RAG: session={Session}, найдено {Count} чанков",
+        logger.LogInformation("RAG: session={Session}, found {Count} chunks",
             sessionId ?? "(anonymous)", hits.Count);
 
         return hits.Select(hit => new RagChunk(

@@ -7,20 +7,20 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      // Единый источник правды локалей — папка locales/ в корне репо.
-      // Backend копирует её через .csproj Content include, frontend импортирует через alias.
+      // Single source of truth for locales — the locales/ folder at the repo root.
+      // The backend copies it via .csproj Content include; the frontend imports it via this alias.
       '@locales': path.resolve(__dirname, '../locales'),
     },
   },
   server: {
-    // Разрешаем dev-серверу читать файлы выше chatbot-ui/ (нужно для @locales).
+    // Allow the dev server to read files above chatbot-ui/ (required for @locales).
     fs: { allow: ['..'] },
     proxy: {
-      // Проксируем /api на бекенд — bypass нужен для SSE стриминга
+      // Proxy /api to the backend — bypass is needed for SSE streaming.
       '/api': {
         target: 'http://localhost:5249',
         changeOrigin: true,
-        // Отключаем буферизацию ответа чтобы SSE токены шли сразу
+        // Disable response buffering so SSE tokens are delivered immediately.
         configure: (proxy) => {
           proxy.on('proxyRes', (proxyRes) => {
             proxyRes.headers['x-accel-buffering'] = 'no'

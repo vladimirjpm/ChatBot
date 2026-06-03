@@ -9,13 +9,13 @@ export interface DocumentInfo {
 }
 
 /**
- * Список загруженных документов с учётом приватности.
- * Бэкенд возвращает shared + private текущей сессии.
+ * Uploaded document list with privacy awareness.
+ * The backend returns shared + private documents for the current session.
  */
 export function useDocuments(sessionId: string) {
   const [docs, setDocs] = useState<DocumentInfo[]>([])
   const [loading, setLoading] = useState(false)
-  // bump — счётчик инвалидации, увеличивается извне (после upload) для перезапроса
+  // bump — invalidation counter, incremented externally (after upload) to trigger a re-fetch.
   const [bump, setBump] = useState(0)
 
   const refresh = useCallback(() => setBump(b => b + 1), [])

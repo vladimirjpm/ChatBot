@@ -1,19 +1,19 @@
 namespace ChatBot.Infrastructure.Localization;
 
 /// <summary>
-/// Поставщик локалей. Абстракция нужна чтобы можно было заменить JSON-источник
-/// на БД / Crowdin API / Redis без правок в потребителях (ChatService).
+/// Locale provider. The abstraction allows swapping the JSON source for a DB / Crowdin API / Redis
+/// without touching consumers (ChatService).
 ///
-/// .NET: эквивалент IStringLocalizerFactory, только проще — не дробим на ключи,
-/// а возвращаем целиком типизированный <see cref="Locale"/>.
+/// .NET: similar to IStringLocalizerFactory but simpler — instead of individual keys
+/// we return a fully typed <see cref="Locale"/> object.
 /// </summary>
 public interface ILocalizationProvider
 {
     /// <summary>
-    /// Возвращает локаль по коду языка. Fallback на дефолтный язык если такой не загружен.
+    /// Returns the locale for a given language code. Falls back to the default language if not loaded.
     /// </summary>
     Locale Get(string? language);
 
-    /// <summary>Список загруженных языков (для health-чека / диагностики).</summary>
+    /// <summary>List of loaded languages (for health checks / diagnostics).</summary>
     IReadOnlyCollection<string> AvailableLanguages { get; }
 }

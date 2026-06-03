@@ -11,13 +11,13 @@ interface Props {
 }
 
 const ROLES: { id: Role; label: string; icon: string; desc: string }[] = [
-  { id: 'dotnet', label: '.NET / C#',      icon: '⚙️', desc: 'ASP.NET Core, EF Core, SOLID, паттерны' },
+  { id: 'dotnet', label: '.NET / C#',      icon: '⚙️', desc: 'ASP.NET Core, EF Core, SOLID, patterns' },
   { id: 'react',  label: 'React / TS',     icon: '⚛️', desc: 'Hooks, State management, TypeScript' },
   { id: 'devops', label: 'DevOps / Cloud', icon: '☁️', desc: 'Docker, Kubernetes, CI/CD, Azure/AWS' },
 ]
 
 const LANGS: { id: Language; label: string; flag: string }[] = [
-  { id: 'ru', label: 'Русский', flag: '🇷🇺' },
+  { id: 'ru', label: 'Russian', flag: '🇷🇺' },
   { id: 'en', label: 'English', flag: '🇬🇧' },
 ]
 
@@ -39,7 +39,7 @@ export function RoleSelector({ onStart, sessionId }: Props) {
     try {
       await uploadFile(file, pendingScope, sessionId)
       refresh()
-    } catch { /* статус выставлен хуком */ }
+    } catch { /* status is set by the hook */ }
   }
 
   const openPicker = (scope: 'shared' | 'private') => {
@@ -60,7 +60,7 @@ export function RoleSelector({ onStart, sessionId }: Props) {
         <p className="text-slate-400">{subtitle}</p>
       </div>
 
-      {/* Переключатель режима с пояснениями */}
+      {/* Mode switcher with descriptions */}
       <div className="w-full max-w-2xl bg-slate-800/40 border border-slate-700 rounded-xl p-4">
         <div className="text-xs text-slate-400 mb-3">{s.modeLabel}</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -92,7 +92,7 @@ export function RoleSelector({ onStart, sessionId }: Props) {
         </div>
       </div>
 
-      {/* Переключатель языка */}
+      {/* Language switcher */}
       <div className="flex gap-2">
         {LANGS.map(l => (
           <button
@@ -111,7 +111,7 @@ export function RoleSelector({ onStart, sessionId }: Props) {
         ))}
       </div>
 
-      {/* Выбор роли — только в режиме собеседования */}
+      {/* Role selection — only in interview mode */}
       {isInterview && (
         <div className="flex flex-col sm:flex-row gap-4 w-full max-w-2xl">
           {ROLES.map(r => (
@@ -133,7 +133,7 @@ export function RoleSelector({ onStart, sessionId }: Props) {
         </div>
       )}
 
-      {/* Поле резюме — только в режиме interview */}
+      {/* Resume field — only in interview mode */}
       <div className="w-full max-w-2xl">
         {isInterview && (
           <>
@@ -150,7 +150,7 @@ export function RoleSelector({ onStart, sessionId }: Props) {
           </>
         )}
 
-        {/* Загрузка PDF в RAG — два режима: shared / private */}
+        {/* PDF upload to RAG — two modes: shared / private */}
         <div className="mt-3 flex items-center gap-3 flex-wrap">
           <span className="text-xs text-slate-500">{s.uploadHint}</span>
           <input ref={sharedInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
@@ -191,7 +191,7 @@ export function RoleSelector({ onStart, sessionId }: Props) {
           )}
         </div>
 
-        {/* Список загруженных документов */}
+        {/* Uploaded documents list */}
         <div className="mt-4">
           <div className="text-xs text-slate-400 mb-2">{s.docsTitle}</div>
           <DocumentList docs={docs} loading={docsLoading} onDelete={remove} emptyText={s.docsEmpty} lang={selectedLang} />
@@ -200,7 +200,7 @@ export function RoleSelector({ onStart, sessionId }: Props) {
 
       <button
         onClick={() => {
-          // В режиме assistant роль не нужна; в interview — обязательна.
+          // In assistant mode role is not needed; in interview it is required.
           if (!isInterview) onStart(null, '', selectedLang, 'assistant')
           else if (selectedRole) onStart(selectedRole, resume, selectedLang, 'interview')
         }}

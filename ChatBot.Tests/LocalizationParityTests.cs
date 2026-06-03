@@ -4,17 +4,17 @@ using Xunit;
 namespace ChatBot.Tests;
 
 /// <summary>
-/// Проверяет что все локали имеют одинаковый набор ключей. Защита от ситуации
-/// «добавили строку в ru.json, забыли en.json — в проде вылезет ключ-как-плейсхолдер».
+/// Verifies that all locales have the same set of keys. Guards against the scenario
+/// "added a string to ru.json, forgot en.json — in production the key itself shows as the value".
 ///
-/// .NET: эквивалент тестов на соответствие .resx файлов между культурами.
+/// .NET: equivalent of tests that verify .resx file parity across cultures.
 /// </summary>
 public class LocalizationParityTests
 {
     [Fact]
     public void All_Locales_Have_Same_Keys_As_Reference()
     {
-        // Эталон — ru.json (как дефолтный). Остальные должны его повторять.
+        // Reference locale is ru.json (the default). All others must mirror it.
         var referenceLang = "ru";
         var localesDir = FindLocalesDirectory();
 
@@ -33,13 +33,13 @@ public class LocalizationParityTests
             var extra = keys.Except(refKeys).ToList();
 
             Assert.True(missing.Count == 0,
-                $"В {lang}.json не хватает ключей (есть в {referenceLang}): {string.Join(", ", missing)}");
+                $"{lang}.json is missing keys (present in {referenceLang}): {string.Join(", ", missing)}");
             Assert.True(extra.Count == 0,
-                $"В {lang}.json есть лишние ключи (нет в {referenceLang}): {string.Join(", ", extra)}");
+                $"{lang}.json has extra keys (absent in {referenceLang}): {string.Join(", ", extra)}");
         }
     }
 
-    /// <summary>Идём от текущего пути теста к корню репо, ищем папку <c>locales</c>.</summary>
+    /// <summary>Walks up from the test binary path to the repo root, looking for the <c>locales</c> folder.</summary>
     private static string FindLocalesDirectory()
     {
         var dir = AppContext.BaseDirectory;
@@ -50,7 +50,7 @@ public class LocalizationParityTests
                 return candidate;
             dir = Path.GetDirectoryName(dir);
         }
-        throw new DirectoryNotFoundException("Папка locales не найдена выше тестового бинарника");
+        throw new DirectoryNotFoundException("locales directory not found above the test binary");
     }
 
     private static JsonDocument LoadKeys(string file)
@@ -59,9 +59,7 @@ public class LocalizationParityTests
         return JsonDocument.Parse(stream);
     }
 
-    /// <summary>
-    /// Рекурсивно обходит JSON-объект, возвращает все ключи в дотовой нотации (ui.modeLabel).
-    /// </summary>
+    /// <summary>Recursively walks a JSON object and returns all keys in dot notation (e.g. ui.modeLabel).</summary>
     private static IEnumerable<string> FlattenKeys(JsonElement element, string prefix = "")
     {
         if (element.ValueKind != JsonValueKind.Object) yield break;

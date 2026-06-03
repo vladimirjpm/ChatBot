@@ -25,7 +25,7 @@ export function MessageInput({ onSend, disabled, onReset, placeholder, sessionId
     try {
       await uploadFile(file, pendingScope, sessionId)
       onUploaded?.()
-    } catch { /* статус выставлен хуком */ }
+    } catch { /* status is set by the hook */ }
   }
 
   const openPicker = (scope: 'shared' | 'private') => {
@@ -38,12 +38,12 @@ export function MessageInput({ onSend, disabled, onReset, placeholder, sessionId
     if (!trimmed || disabled) return
     onSend(trimmed)
     setText('')
-    // Сбрасываем высоту textarea после отправки
+    // Reset textarea height after sending.
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter отправляет, Shift+Enter — новая строка
+    // Enter sends, Shift+Enter inserts a new line.
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -61,18 +61,18 @@ export function MessageInput({ onSend, disabled, onReset, placeholder, sessionId
 
   return (
     <div className="border-t border-slate-700/50 bg-slate-900 px-4 py-3">
-      {/* Статус загрузки документа — компактная плашка над инпутом */}
+      {/* Document upload status — compact banner above the input */}
       {upload.kind !== 'idle' && (
         <div className="max-w-4xl mx-auto mb-2 text-xs">
           {upload.kind === 'uploading' && (
             <div className="text-slate-400 flex items-center gap-2">
               <span className="w-3 h-3 border-2 border-slate-500 border-t-blue-400 rounded-full animate-spin" />
-              Загружаю {upload.fileName}...
+              Uploading {upload.fileName}...
             </div>
           )}
           {upload.kind === 'success' && (
             <div className="text-green-400">
-              ✓ {upload.fileName} — проиндексировано {upload.chunks} чанков
+              ✓ {upload.fileName} — indexed {upload.chunks} chunks
             </div>
           )}
           {upload.kind === 'error' && (
@@ -82,22 +82,22 @@ export function MessageInput({ onSend, disabled, onReset, placeholder, sessionId
       )}
 
       <div className="flex items-end gap-3 max-w-4xl mx-auto">
-        {/* Кнопка сброса сессии */}
+        {/* Session reset button */}
         <button
           onClick={onReset}
-          title="Начать заново"
+          title="Start over"
           className="shrink-0 w-9 h-9 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex items-center justify-center text-lg"
         >
           ↺
         </button>
 
-        {/* Загрузка документа в RAG — две кнопки на разные scope */}
+        {/* RAG document upload — two buttons for different scopes */}
         <input ref={sharedInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
         <input ref={privateInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
         <button
           onClick={() => openPicker('private')}
           disabled={isUploading}
-          title="🔒 Загрузить только в эту сессию"
+          title="🔒 Upload to this session only"
           className="shrink-0 w-9 h-9 rounded-lg text-slate-400 hover:text-blue-300 hover:bg-slate-700 transition-colors flex items-center justify-center text-base disabled:opacity-30 disabled:cursor-not-allowed"
         >
           {isUploading && pendingScope === 'private' ? (
@@ -107,7 +107,7 @@ export function MessageInput({ onSend, disabled, onReset, placeholder, sessionId
         <button
           onClick={() => openPicker('shared')}
           disabled={isUploading}
-          title="🌐 Загрузить в общую базу"
+          title="🌐 Upload to the shared knowledge base"
           className="shrink-0 w-9 h-9 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex items-center justify-center text-base disabled:opacity-30 disabled:cursor-not-allowed"
         >
           {isUploading && pendingScope === 'shared' ? (
@@ -121,7 +121,7 @@ export function MessageInput({ onSend, disabled, onReset, placeholder, sessionId
           onChange={e => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           onInput={handleInput}
-          placeholder={placeholder ?? 'Твой ответ... (Enter — отправить)'}
+          placeholder={placeholder ?? 'Your answer... (Enter to send)'}
           rows={1}
           disabled={disabled}
           className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50 min-h-[42px]"

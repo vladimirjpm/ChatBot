@@ -3,9 +3,7 @@ using Xunit;
 
 namespace ChatBot.Tests;
 
-/// <summary>
-/// Юнит-тесты чанкера — без сети, без БД, чисто детерминированная логика.
-/// </summary>
+/// <summary>Unit tests for the chunker — no network, no DB, purely deterministic logic.</summary>
 public class TextChunkerTests
 {
     [Fact]
@@ -26,11 +24,11 @@ public class TextChunkerTests
     [Fact]
     public void Chunk_LongText_SplitsWithOverlap()
     {
-        // 1000 символов одним предложением, чанк 300, overlap 50 → должно быть >= 4 чанков
+        // 1000 characters as one sentence, chunk 300, overlap 50 → expect >= 4 chunks
         var text = new string('a', 1000);
         var chunks = TextChunker.Chunk(text, maxChunkSize: 300, overlap: 50);
 
-        Assert.True(chunks.Count >= 4, $"Ожидалось >= 4 чанков, получено {chunks.Count}");
+        Assert.True(chunks.Count >= 4, $"Expected >= 4 chunks, got {chunks.Count}");
         Assert.All(chunks, c => Assert.True(c.Length <= 300));
     }
 
@@ -43,7 +41,7 @@ public class TextChunkerTests
 
         var chunks = TextChunker.Chunk(text, maxChunkSize: 250, overlap: 20);
 
-        // Первый чанк должен заканчиваться точкой первого предложения, а не на середине второго
+        // First chunk should end with the period of the first sentence, not mid-way through the second
         Assert.EndsWith(".", chunks[0]);
     }
 
