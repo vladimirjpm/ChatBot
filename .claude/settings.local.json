@@ -14,7 +14,9 @@
       "Bash(Get-ChildItem -Recurse C:\\\\_Proj\\\\ChatBot\\\\ChatBot.Infrastructure)",
       "Bash(Select-Object FullName)",
       "PowerShell(Get-ChildItem -Recurse \"C:\\\\_Proj\\\\ChatBot\\\\ChatBot.Infrastructure\" | Where-Object { -not $_.PSIsContainer } | Select-Object FullName)",
-      "Bash(git -C C:/_Proj/ChatBot log --oneline --since=\"2026-06-03 00:00\")"
+      "Bash(git -C C:/_Proj/ChatBot log --oneline --since=\"2026-06-03 00:00\")",
+      "Bash(Copy-Item chatbot-plan.html chatbot-plan-ru.html)",
+      "Bash(Copy-Item chatbot-interview-review.html chatbot-interview-review-ru.html)"
     ]
   }
 }

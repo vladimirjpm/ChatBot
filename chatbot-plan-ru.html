@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ChatBot — Development Plan</title>
+  <title>ChatBot — план разработки</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 2rem; }
@@ -51,43 +51,43 @@
 </head>
 <body>
 
-  <h1>ChatBot — Development Plan</h1>
+  <h1>ChatBot — план разработки</h1>
   <p class="subtitle">.NET 10 · Semantic Kernel · Qdrant · React 18 + Vite</p>
 
   <div class="grid">
     <div class="card">
-      <h2>Stack</h2>
+      <h2>Стек</h2>
       <div class="stack-row"><span class="stack-label">Backend</span><span class="stack-value">.NET 10 Minimal API</span></div>
       <div class="stack-row"><span class="stack-label">LLM</span><span class="stack-value">Semantic Kernel 1.77 · OpenAI / Ollama</span></div>
-      <div class="stack-row"><span class="stack-label">Vector DB</span><span class="stack-value">Qdrant Cloud</span></div>
-      <div class="stack-row"><span class="stack-label">DB / Cache</span><span class="stack-value">PostgreSQL 16 · Redis 7</span></div>
+      <div class="stack-row"><span class="stack-label">Vector DB</span><span class="stack-value">Qdrant (Docker)</span></div>
+      <div class="stack-row"><span class="stack-label">БД / Кэш</span><span class="stack-value">PostgreSQL 16 · Redis 7</span></div>
       <div class="stack-row"><span class="stack-label">Frontend</span><span class="stack-value">React 18 · TypeScript · Vite · Tailwind</span></div>
     </div>
 
     <div class="card">
-      <h2>Running locally</h2>
+      <h2>Что запущено прямо сейчас</h2>
       <div class="cmd-block">
-        <div class="cmd-comment"># Qdrant — needed for document upload and RAG search (stages 4–5)</div>
-        <div class="cmd-comment"># Requires Docker Desktop running</div>
+        <div class="cmd-comment"># Qdrant — нужен для upload документов и RAG-поиска (этапы 4–5)</div>
+        <div class="cmd-comment"># Требует запущенный Docker Desktop</div>
         <div class="cmd-text">docker compose up -d qdrant</div>
         <div style="color:#475569; font-size:0.78rem">→ REST http://localhost:6333 · gRPC :6334</div>
-        <div style="margin-top:0.3rem" class="cmd-comment"># Verify</div>
+        <div style="margin-top:0.3rem" class="cmd-comment"># Проверка</div>
         <div class="cmd-text">docker ps</div>
         <div class="cmd-text">curl.exe http://localhost:6333/collections/documents</div>
-        <div style="margin-top:0.3rem" class="cmd-comment"># Stop / teardown (volume chatbot_qdrant_data is kept on stop/down, removed on down -v)</div>
+        <div style="margin-top:0.3rem" class="cmd-comment"># Стоп / снос (volume chatbot_qdrant_data сохраняется при stop/down, удаляется при down -v)</div>
         <div class="cmd-text">docker compose stop qdrant</div>
         <div class="cmd-text">docker compose down -v</div>
 
-        <div style="margin-top:0.6rem" class="cmd-comment"># Frontend — first time (install deps)</div>
+        <div style="margin-top:0.6rem" class="cmd-comment"># Frontend — первый раз (установка зависимостей)</div>
         <div class="cmd-text">cmd /c "cd C:\_Proj\ChatBot\chatbot-ui &amp;&amp; npm install"</div>
-        <div style="margin-top:0.3rem" class="cmd-comment"># Frontend — start dev server</div>
+        <div style="margin-top:0.3rem" class="cmd-comment"># Frontend — запуск</div>
         <div class="cmd-text">cmd /c "cd C:\_Proj\ChatBot\chatbot-ui &amp;&amp; npm run dev"</div>
         <div style="color:#475569; font-size:0.78rem">→ http://localhost:5173</div>
-        <div style="margin-top:0.6rem" class="cmd-comment"># Backend API (requires $env:Llm__ApiKey = "sk-...")</div>
+        <div style="margin-top:0.6rem" class="cmd-comment"># Backend API (нужен $env:Llm__ApiKey = "sk-...")</div>
         <div class="cmd-text">cd C:\_Proj\ChatBot\ChatBot.Api</div>
         <div class="cmd-text">dotnet run</div>
         <div style="color:#475569; font-size:0.78rem">→ http://localhost:5249/openapi/v1.json · /health · /health/live</div>
-        <div style="margin-top:0.6rem" class="cmd-comment"># Tests</div>
+        <div style="margin-top:0.6rem" class="cmd-comment"># Тесты</div>
         <div class="cmd-text">dotnet test</div>
       </div>
     </div>
@@ -106,9 +106,9 @@
       </div>
     </div>
     <div class="cmd-block">
-      <div class="cmd-comment"># Sanity-check — Kestrel alive (expect 404 from root)</div>
+      <div class="cmd-comment"># Sanity-check — Kestrel жив (ожидается 404 от корня)</div>
       <div class="cmd-text">curl.exe -i "https://chatbot-production-c911.up.railway.app/"</div>
-      <div style="margin-top:0.6rem" class="cmd-comment"># Chat SSE stream — should stream data: "..." tokens, ending with data: [DONE]</div>
+      <div style="margin-top:0.6rem" class="cmd-comment"># Чат SSE-стрим — должны политься data: "..." токены и в конце data: [DONE]</div>
       <div class="cmd-text">$body = '{"message":"hello","history":[]}'</div>
       <div class="cmd-text">Invoke-WebRequest -Uri "https://chatbot-production-c911.up.railway.app/api/chat/stream" `</div>
       <div class="cmd-text">&nbsp;&nbsp;-Method POST -ContentType "application/json" -Body $body |</div>
@@ -117,57 +117,48 @@
   </div>
 
   <div class="card" style="margin-bottom:1.5rem">
-    <h2 style="margin-bottom:0.75rem">API endpoints</h2>
+    <h2 style="margin-bottom:0.75rem">API эндпоинты</h2>
     <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem">
       <div style="display:grid; grid-template-columns: 80px 1fr; gap:0.75rem; align-items:baseline">
         <span style="color:#4ade80; font-family:'Cascadia Code',monospace; font-weight:600">POST</span>
         <div>
           <a href="http://localhost:5249/api/chat/stream" style="color:#38bdf8; text-decoration:none; font-family:'Cascadia Code',monospace">/api/chat/stream</a>
-          <div style="color:#94a3b8; font-size:0.8rem; margin-top:0.15rem">SSE streaming LLM response. Body: <code>{ message, sessionId?, role?, resumeContext?, language? }</code></div>
+          <div style="color:#94a3b8; font-size:0.8rem; margin-top:0.15rem">SSE-стрим ответа LLM. Body: <code>{ message, sessionId?, role?, resumeContext?, language? }</code></div>
         </div>
       </div>
       <div style="display:grid; grid-template-columns: 80px 1fr; gap:0.75rem; align-items:baseline">
         <span style="color:#4ade80; font-family:'Cascadia Code',monospace; font-weight:600">POST</span>
         <div>
           <a href="http://localhost:5249/api/documents/upload" style="color:#38bdf8; text-decoration:none; font-family:'Cascadia Code',monospace">/api/documents/upload</a>
-          <div style="color:#94a3b8; font-size:0.8rem; margin-top:0.15rem">Upload PDF (multipart/form-data, field <code>file</code>) → ingestion → Qdrant. Fields: <code>scope</code> (shared|private), <code>sessionId</code> (required for private).</div>
-        </div>
-      </div>
-      <div style="display:grid; grid-template-columns: 80px 1fr; gap:0.75rem; align-items:baseline">
-        <span style="color:#64748b; font-family:'Cascadia Code',monospace; font-weight:600">GET</span>
-        <div>
-          <span style="color:#38bdf8; font-family:'Cascadia Code',monospace">/api/documents?sessionId=</span>
-          <div style="color:#94a3b8; font-size:0.8rem; margin-top:0.15rem">List documents accessible in the session (shared + own private). Returns <code>[{ name, scope, chunks }]</code>.</div>
-        </div>
-      </div>
-      <div style="display:grid; grid-template-columns: 80px 1fr; gap:0.75rem; align-items:baseline">
-        <span style="color:#f87171; font-family:'Cascadia Code',monospace; font-weight:600">DELETE</span>
-        <div>
-          <span style="color:#38bdf8; font-family:'Cascadia Code',monospace">/api/documents/{name}?sessionId=</span>
-          <div style="color:#94a3b8; font-size:0.8rem; margin-top:0.15rem">Delete a private document for the given session. Shared documents cannot be deleted via API.</div>
+          <div style="color:#94a3b8; font-size:0.8rem; margin-top:0.15rem">Загрузка документа (multipart/form-data, поле <code>file</code>) → ingestion → Qdrant. Сейчас заглушка.</div>
         </div>
       </div>
       <div style="display:grid; grid-template-columns: 80px 1fr; gap:0.75rem; align-items:baseline">
         <span style="color:#64748b; font-family:'Cascadia Code',monospace; font-weight:600">GET</span>
         <div>
           <a href="http://localhost:5249/openapi/v1.json" target="_blank" style="color:#38bdf8; text-decoration:none; font-family:'Cascadia Code',monospace">/openapi/v1.json</a>
-          <div style="color:#94a3b8; font-size:0.8rem; margin-top:0.15rem">OpenAPI schema (Development only).</div>
+          <div style="color:#94a3b8; font-size:0.8rem; margin-top:0.15rem">OpenAPI-схема (только Development).</div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns: 80px 1fr; gap:0.75rem; align-items:baseline; opacity:0.55">
+        <span style="color:#fb923c; font-family:'Cascadia Code',monospace; font-weight:600">GET*</span>
+        <div>
+          <span style="color:#fb923c; font-family:'Cascadia Code',monospace">/api/debug/history/{sessionId}</span>
+          <div style="color:#94a3b8; font-size:0.8rem; margin-top:0.15rem">Запланирован — дамп <code>ChatHistory</code> по сессии для отладки. Только Development.</div>
         </div>
       </div>
     </div>
   </div>
 
   <div class="card" style="margin-bottom:1.5rem">
-    <h2 style="margin-bottom:0.75rem">Component status</h2>
+    <h2 style="margin-bottom:0.75rem">Статус компонентов</h2>
     <div class="status-row">
-      <span class="chip ok"><span class="dot"></span>dotnet build — 0 errors</span>
-      <span class="chip ok"><span class="dot"></span>POST /api/chat/stream — working</span>
-      <span class="chip ok"><span class="dot"></span>POST /api/documents/upload — working</span>
-      <span class="chip ok"><span class="dot"></span>GET /api/documents — working (payload indexes fixed)</span>
-      <span class="chip ok"><span class="dot"></span>DELETE /api/documents — working</span>
-      <span class="chip ok"><span class="dot"></span>RAG pipeline — live (Qdrant Cloud)</span>
-      <span class="chip ok"><span class="dot"></span>CORS — env-scoped origins</span>
-      <span class="chip ok"><span class="dot"></span>Session store — Singleton ISessionStore</span>
+      <span class="chip ok"><span class="dot"></span>dotnet build — 0 ошибок</span>
+      <span class="chip ok"><span class="dot"></span>POST /api/chat/stream — работает с API ключом</span>
+      <span class="chip ok"><span class="dot"></span>POST /api/documents/upload — принимает файл</span>
+      <span class="chip warn"><span class="dot"></span>RagService — заглушка (этап 4–5)</span>
+      <span class="chip warn"><span class="dot"></span>IngestionService — заглушка (этап 4)</span>
+      <span class="chip info"><span class="dot"></span>UI — стандартный Vite экран (этап 2)</span>
     </div>
   </div>
 
@@ -175,36 +166,36 @@
     <div class="stage done">
       <div class="stage-badge">✓</div>
       <div class="stage-info">
-        <h3>Stage 1 — Scaffolding</h3>
-        <p>Solution, 3 projects, NuGet packages, interfaces, docker-compose, .gitignore</p>
+        <h3>Этап 1 — Скаффолдинг</h3>
+        <p>Solution, 3 проекта, NuGet пакеты, интерфейсы, docker-compose, .gitignore</p>
       </div>
     </div>
     <div class="stage done">
       <div class="stage-badge">✓</div>
       <div class="stage-info">
-        <h3>Stage 2 — React interview simulator UI</h3>
-        <p>Tailwind, role picker (.NET/React/DevOps), SSE streaming, resume context, gpt-4o, 🇷🇺/🇬🇧 language support</p>
+        <h3>Этап 2 — React UI симулятора собеседований</h3>
+        <p>Tailwind, выбор роли (.NET/React/DevOps), SSE-стриминг, резюме-контекст, gpt-4o, 🇷🇺/🇬🇧 язык интервью</p>
       </div>
     </div>
     <div class="stage done">
       <div class="stage-badge">✓</div>
       <div class="stage-info">
-        <h3>Stage 3 — Integration tests</h3>
-        <p>xUnit + WebApplicationFactory, fake IChatService/IIngestionService, SSE and multipart upload — 15/15 passed</p>
+        <h3>Этап 3 — Интеграционные тесты</h3>
+        <p>xUnit + WebApplicationFactory, фейки IChatService/IIngestionService, SSE и multipart-upload — 3/3 passed</p>
       </div>
     </div>
     <div class="stage done">
       <div class="stage-badge">✓</div>
       <div class="stage-info">
-        <h3>Stage 4 — Ingestion Pipeline</h3>
-        <p>PdfPig + TextChunker (1500/200 chars, sentence boundary) + OpenAI embeddings + Qdrant upsert. Chunker unit tests 5/5. Payload indexes (scope, sessionId, documentName) for Qdrant Cloud.</p>
+        <h3>Этап 4 — Ingestion Pipeline</h3>
+        <p>PdfPig + TextChunker (1500/200, по границе предложения) + OpenAI embeddings + Qdrant upsert. Юнит-тесты чанкера 5/5.</p>
       </div>
     </div>
     <div class="stage done">
       <div class="stage-badge">✓</div>
       <div class="stage-info">
-        <h3>Stage 5 — RAG in chat</h3>
-        <p>Query embedding → top-K Qdrant search → chunk injection into system prompt. Graceful fallback when collection absent.</p>
+        <h3>Этап 5 — RAG в чате</h3>
+        <p>Эмбеддинг запроса → top-K поиск в Qdrant → инжекция чанков в системный промпт. Graceful при отсутствии коллекции.</p>
       </div>
     </div>
   </div>
